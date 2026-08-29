@@ -38,17 +38,6 @@ if (length(args) < 2) {
 rho_val   <- as.numeric(args[1])
 seed_val  <- as.integer(args[2])
 
-#n_cells_list <- c(
-#  500, 1000, 1500, 2000, 2500, 3000, 3500, 4000, 5000,
-#  10000, 20000, 40000, 60000, 80000, 100000, 120000, 140000, 160000
-#)
-#mus_list        <- c(1000, 2000, 3000, 4000, 5000, 6000)
-#size_nb_strings <- c("inf", "fixed", "0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7", "0.8", "0.9", "1.0", "1.5", "2.0", "2.5", "3.0", "3.5", "10.0")
-
-#n_cells_list <- c(1000, 2000, 5000, 10000, 20000)
-#mus_list        <- c(5000)
-#size_nb_strings <- c("inf", "fixed", "0.5", "1.0", "2.0")
-
 n_cells_list    <- c(1000, 2000, 5000, 10000, 20000)
 mus_list        <- c(1000, 2000, 3000, 4000, 5000)
 size_nb_strings <- c("0.1", "0.2", "0.5", "1.0", "2.0", "inf", "fixed")
@@ -61,12 +50,15 @@ config      <- yaml::yaml.load_file(config_path)
 resultsdir  <- config$paths$resultsdir
 
 rho_str    <- format(rho_val, nsmall = 1)
-output_dir <- file.path(resultsdir, "synthetic_data_extended", paste0("rho_", rho_str))
+output_dir <- file.path(resultsdir, "synthetic_data_extended_plus", paste0("rho_", rho_str))
 if (!dir.exists(output_dir)) {
   dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
 }
 
 set.seed(42 + seed_val)
+
+# Lista do gromadzenia wyników z poszczególnych iteracji
+results_list <- list()
 
 for (n in n_cells_list) {
   for (mu_val in mus_list) {
@@ -101,15 +93,17 @@ for (n in n_cells_list) {
       }
       
       out <- data.table(
+        n_cells = n,
+        mu = mu_val,
+        size_nb = size_nb_str,
         total_reads = sizes,
         x_A1 = x_A1_syn,
-        x_A2 = x_A2_syn
+        x_A2 = x_A2_syn,
+        sigma = NA_real_,
+        generated_norm_cor = NA_real_,
+        prob_pearson_cor = NA_real_,
+        prob_spearman_cor = NA_real_
       )
-      
-      out[, sigma := NA_real_]
-      out[, generated_norm_cor := NA_real_]
-      out[, prob_pearson_cor := NA_real_]
-      out[, prob_spearman_cor := NA_real_]
       
       out[1, `:=`(
         sigma = sim$sigma,
@@ -118,14 +112,14 @@ for (n in n_cells_list) {
         prob_spearman_cor = sim$prob_spearman_cor
       )]
       
-      filename <- paste0("synthetic_counts_n", n, "_mu", mu_val, "_sizeNB", size_nb_str, "_alpha", alpha_val, "_beta", beta_val, "_seed", seed_val, ".tsv.gz")
-      output_file <- file.path(output_dir, filename)
-      
-      fwrite(out, output_file, sep = "\t")
+      results_list[[length(results_list) + 1]] <- out
     }
   }
 }
 
-done_file <- file.path(output_dir, paste0("sim_seed", seed_val, ".done"))
-file.create(done_file)
+# Połączenie wszystkich ramek danych w jedną i zapis
+final_dt <- rbindlist(results_list, use.names = TRUE, fill = TRUE)
+output_file <- file.path(output_dir, paste0("synthetic_counts_seed", seed_val, ".tsv.gz"))
+
+fwrite(final_dt, output_file, sep = "\t", compress = "gzip")
 cat("Successfully finished batch for rho:", rho_str, "and seed:", seed_val, "\n")

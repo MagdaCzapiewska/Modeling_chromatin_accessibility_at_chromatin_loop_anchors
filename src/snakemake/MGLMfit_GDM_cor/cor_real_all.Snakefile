@@ -3,7 +3,7 @@ import os
 configfile: "config/config.yml"
 
 RESULTSDIR = config["paths"]["resultsdir"]
-REAL_COUNTS_DIR = os.path.join(RESULTSDIR, "counts", "counts_in_anchors")
+# REAL_COUNTS_DIR = os.path.join(RESULTSDIR, "counts", "counts_in_anchors")
 FIT_BASE_DIR = RESULTSDIR
 
 OUT_REAL_ALL = os.path.join(RESULTSDIR, "MGLMfit_GDM_cor", "real_data", "all")
@@ -24,8 +24,8 @@ rule calculate_real_all_cor:
     input:
         script = RSCRIPT,
         funcs = os.path.join(config['paths']['Rsrcdir'], "MGLMfit_GDM_cor", "correlation_functions.R"),
-        fit_path = FIT_BASE_DIR,
-        counts = REAL_COUNTS_DIR
+        fit_path = FIT_BASE_DIR
+        # counts = REAL_COUNTS_DIR
     output:
         os.path.join(OUT_REAL_ALL, "init_{init}", "cor_{tw}.tsv.gz")
     log:
@@ -36,6 +36,14 @@ rule calculate_real_all_cor:
             "{wildcards.tw}" \
             "{wildcards.init}" \
             "{output}" \
-            "{input.fit_path}" \
-            "{input.counts}" > {log} 2>&1
+            "{input.fit_path}" > {log} 2>&1 
         """
+    # shell:
+    #     """
+    #     Rscript {input.script} \
+    #         "{wildcards.tw}" \
+    #         "{wildcards.init}" \
+    #         "{output}" \
+    #         "{input.fit_path}" \
+    #         "{input.counts}" > {log} 2>&1
+    #     """

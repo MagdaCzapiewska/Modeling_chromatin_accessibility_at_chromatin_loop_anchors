@@ -3,7 +3,7 @@ import os
 configfile: "config/config.yml"
 
 RESULTSDIR = config["paths"]["resultsdir"]
-REAL_COUNTS_DIR = os.path.join(RESULTSDIR, "counts", "counts_in_anchors")
+# REAL_COUNTS_DIR = os.path.join(RESULTSDIR, "counts", "counts_in_anchors")
 FIT_BASE_DIR = RESULTSDIR
 
 OUT_REAL_POPS = os.path.join(RESULTSDIR, "MGLMfit_GDM_cor", "real_data", "pops")
@@ -25,7 +25,9 @@ rule calculate_real_pops_cor:
         script = RSCRIPT,
         funcs = os.path.join(config['paths']['Rsrcdir'], "MGLMfit_GDM_cor", "correlation_functions.R"),
         fit_path = FIT_BASE_DIR,
-        counts = REAL_COUNTS_DIR
+        # counts = REAL_COUNTS_DIR
+        pop_map = os.path.join(RESULTSDIR, "cluster_pop_mapping.tsv.gz"),
+        cardinality = os.path.join(RESULTSDIR, "cluster_cardinality.tsv.gz")
     output:
         os.path.join(OUT_REAL_POPS, "init_{init}", "cor_{tw}.tsv.gz")
     log:
@@ -36,6 +38,14 @@ rule calculate_real_pops_cor:
             "{wildcards.tw}" \
             "{wildcards.init}" \
             "{output}" \
-            "{input.fit_path}" \
-            "{input.counts}" > {log} 2>&1
+            "{input.fit_path}" > {log} 2>&1
         """
+    # shell:
+    #     """
+    #     Rscript {input.script} \
+    #         "{wildcards.tw}" \
+    #         "{wildcards.init}" \
+    #         "{output}" \
+    #         "{input.fit_path}" \
+    #         "{input.counts}" > {log} 2>&1
+    #     """

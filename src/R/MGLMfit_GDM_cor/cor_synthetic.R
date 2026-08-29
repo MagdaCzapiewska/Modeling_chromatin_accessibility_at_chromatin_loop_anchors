@@ -1,15 +1,17 @@
 library(data.table)
 
 args <- commandArgs(trailingOnly = TRUE)
-if (length(args) < 5) {
-  stop("Usage: Rscript cor_synthetic.R <rho_value> <init_value> <output_file_tsv_gz> <fit_base_dir> <synthetic_data_dir>")
+#if (length(args) < 5) {
+if (length(args) < 4) {
+  #stop("Usage: Rscript cor_synthetic.R <rho_value> <init_value> <output_file_tsv_gz> <fit_base_dir> <synthetic_data_dir>")
+  stop("Usage: Rscript cor_synthetic.R <rho_value> <init_value> <output_file_tsv_gz> <fit_base_dir>")
 }
 
 rho_val        <- as.numeric(args[1])
 init_val       <- args[2]
 output_file    <- args[3]
 fit_base_dir   <- args[4]
-synthetic_dir  <- args[5]
+#synthetic_dir  <- args[5]
 
 rho_str <- format(rho_val, nsmall = 1)
 source(file.path("src", "R", "MGLMfit_GDM_cor", "correlation_functions.R"))
@@ -32,18 +34,21 @@ for (n in N_CELLS) {
       for (alpha_val in ALPHA) {
         for (beta_val in BETA) {
           
-          reads_file <- file.path(synthetic_dir, paste0("rho_", rho_str), paste0("synthetic_counts_n", n, "_mu", mu, "_sizeNB", size_nb, "_alpha", alpha_val, "_beta", beta_val, ".tsv.gz"))
+          #reads_file <- file.path(synthetic_dir, paste0("rho_", rho_str), paste0("synthetic_counts_n", n, "_mu", mu, "_sizeNB", size_nb, "_alpha", alpha_val, "_beta", beta_val, ".tsv.gz"))
           fit_file   <- file.path(fit_dir, paste0("fit_synthetic_n", n, "_mu", mu, "_sizeNB", size_nb, "_alpha", alpha_val, "_beta", beta_val, ".rds"))
           
           meta <- list(rho = rho_val, n = n, mu = mu, size_nb = size_nb, alpha_param = alpha_val, beta_param = beta_val)
           
-          if (!file.exists(reads_file)) {
-            cor_results[[length(cor_results) + 1]] <- compute_gdm_correlations(NULL, NULL, metadata_list = meta)
+          #if (!file.exists(reads_file)) {
+          if (!file.exists(fit_file)) {
+            #cor_results[[length(cor_results) + 1]] <- compute_gdm_correlations(NULL, NULL, metadata_list = meta)
+            cor_results[[length(cor_results) + 1]] <- compute_gdm_correlations_from_fit(NULL, metadata_list = meta)
             next
           }
           
           fit <- tryCatch(readRDS(fit_file), error = function(e) NULL)
-          cor_results[[length(cor_results) + 1]] <- compute_gdm_correlations(fit, reads_file, mode = "all", metadata_list = meta)
+          #cor_results[[length(cor_results) + 1]] <- compute_gdm_correlations(fit, reads_file, mode = "all", metadata_list = meta)
+          cor_results[[length(cor_results) + 1]] <- compute_gdm_correlations_from_fit(fit, metadata_list = meta)
         }
       }
     }

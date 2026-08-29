@@ -9,10 +9,10 @@ SNDIR = os.path.join(RESULTSDIR, "synthetic_data_extended")
 OUT_BASE_DIR = os.path.join(RESULTSDIR, "naive_correlation", "synthetic_data_extended")
 RSCRIPT = os.path.join(config['paths']['Rsrcdir'], "MGLMfit_GDM_cor", "naive_cor_synthetic_extended.R")
 
-#RHOS = [-1.0, -0.9, -0.8, -0.7, -0.6, -0.5, -0.4, -0.3, -0.2, -0.1, 0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+RHOS = [-1.0, -0.9, -0.8, -0.7, -0.6, -0.5, -0.4, -0.3, -0.2, -0.1, 0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
 SEEDS = list(range(20))
 
-RHOS = [-0.6, 0.0, 0.6]
+#RHOS = [-0.6, 0.0, 0.6]
 #SEEDS = list(range(1000))
 
 rule all:
