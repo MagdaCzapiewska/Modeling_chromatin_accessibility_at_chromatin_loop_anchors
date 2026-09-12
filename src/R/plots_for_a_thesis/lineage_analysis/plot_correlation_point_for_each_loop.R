@@ -110,22 +110,22 @@ for (p_idx in seq_along(paths)) {
     scale_x_continuous(breaks = 1:10, labels = custom_x_labels, limits = c(0.8, 10.2)) +
     coord_cartesian(ylim = y_limits) +
     labs(
-      title = paste("Estimated Spearman's correlation across cell lineage (Path", p_idx, ")"),
+      title = paste0("Estimated Spearman's correlation across cell lineage (Path ", p_idx, ")"),
       subtitle = paste0("Points represent correlation for individual loops. Lines connect loop point to the point in the nearest valid ancestor in the path.\n",
                         "Filtered by fit quality (min_est_over_se) >= 5"),
       x = "Time window \n Population \n Lineage \n Number of loops (n)",
-      y = "Spearman's rho"
+      y = "Estimated Spearman's correlation (rho)"
     ) +
-    theme_bw(base_size = 12) +
+    theme_bw(base_size = 13) +
     theme(
-      plot.title = element_text(size = 15, face = "bold", color = "#2c3e50"),
-      # ZMIANA: Powiększona czcionka podtytułu (12pt), kolor czarny, zwykły font (bez pogrubienia)
-      plot.subtitle = element_text(size = 12, color = "black", lineheight = 1.3, margin = margin(b = 8)),
-      axis.title.x = element_text(size = 11.5, color = "black", margin = margin(t = 10)),
-      axis.title.y = element_text(size = 11.5, color = "black", margin = margin(r = 8)),
-      axis.text.x = element_text(angle = 0, hjust = 0.5, vjust = 1, lineheight = 1.1, size = 10, color = "black"),
-      axis.text.y = element_text(size = 10, color = "black"),
-      panel.grid.minor = element_blank(),
+      plot.title         = element_text(size = 16, face = "bold", color = "black", hjust = 0.5),
+      plot.subtitle      = element_text(size = 12, color = "black", lineheight = 1.25, hjust = 0.5, margin = margin(b = 8)),
+      axis.title.x       = element_text(size = 13, face = "bold", color = "black", margin = margin(t = 10)),
+      axis.title.y       = element_text(size = 13, face = "bold", color = "black", margin = margin(r = 8)),
+      axis.text          = element_text(size = 10.5, color = "black"),
+      axis.text.x        = element_text(angle = 0, hjust = 0.5, vjust = 1, lineheight = 1.1, size = 10.5, color = "black"),
+      axis.text.y        = element_text(size = 10.5, color = "black"),
+      panel.grid.minor   = element_blank(),
       panel.grid.major.x = element_line(color = "#f1f2f6")
     )
   
@@ -170,7 +170,7 @@ for (p_idx in seq_along(paths)) {
   } else {
     p <- p + 
       annotate("text", x = 5.5, y = mean(y_limits), 
-               label = "No loops with min_est_over_se >= 5", color = "red", size = 4.5)
+               label = "No loops with min_est_over_se >= 5", color = "red", size = 5)
   }
   
   # Zapis do zbiorczego pliku PDF

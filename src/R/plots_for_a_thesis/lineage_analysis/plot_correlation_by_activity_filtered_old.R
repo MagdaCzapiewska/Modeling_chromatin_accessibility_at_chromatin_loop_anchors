@@ -14,11 +14,7 @@ loops_file <- file.path(datadir, "long_and_short_range_loops_D_mel.tsv")
 loops_data <- fread(loops_file)
 
 root_to_leaf_paths <- file.path(resultsdir, "lineage_analysis", "root_to_leaf_paths.txt")
-output_dir <- file.path(resultsdir, "plots_for_a_thesis", "lineage_analysis")
-output_file <- file.path(output_dir, "correlation_by_lineage_with_activity_filtered.pdf")
-stats_output_file <- file.path(output_dir, "wilcoxon_results_bh_adjusted_filtered.tsv")
-dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
-
+output_file <- file.path(resultsdir, "plots_for_a_thesis", "lineage_analysis", "correlation_by_lineage_with_activity_filtered.pdf")
 correlation_dir <- file.path(resultsdir, "MGLMfit_GDM_cor", "real_data", "pops", "init_1e-6")
 
 time_windows <- c("00-02", "02-04", "04-06", "06-08", "08-10", "10-12", "12-14", "14-16", "16-18", "18-20")
@@ -33,7 +29,6 @@ target_columns <- c(
 format_n <- function(x) format(as.numeric(x), big.mark = ",", scientific = FALSE)
 
 # 2. Wczytywanie danych korelacji
-cat("-> Wczytywanie plików korelacji...\n")
 cor_list <- list()
 for (tw in time_windows) {
   file_path <- file.path(correlation_dir, paste0("cor_", tw, ".tsv.gz"))
@@ -47,7 +42,6 @@ for (tw in time_windows) {
 all_cor <- rbindlist(cor_list)
 
 # 3. Filtrowanie wstępne i dołączanie danych z pętli
-cat("-> Filtrowanie danych i dołączanie statusu aktywności pętli...\n")
 all_cor <- all_cor[loop_id %in% loops_data$loop_id]
 all_cor <- all_cor[min_est_over_se >= 5]
 
@@ -61,99 +55,13 @@ global_y_max <- max(all_cor$spearman_rho, na.rm = TRUE)
 paths <- readLines(root_to_leaf_paths)
 paths <- paths[paths != ""]
 
+# Szablon osi X dla wygody
 template_dt <- data.table(time_window = time_windows, x_base = 1:10)
-
-# ==============================================================================
-# KROK 1: PASS 1 - FILTROWANIE RDZENIOWE I OBLICZANIE SUROWYCH P-VALUE
-# ==============================================================================
-cat("\n=== KROK 1: Obliczanie testów Wilcoxona dla przefiltrowanych ścieżek ===\n")
-
-test_results_list <- list()
-
-for (p_idx in seq_along(paths)) {
-  message(sprintf("[%d/%d] Obliczanie testów Wilcoxona dla Path %d (Filtered)...", p_idx, length(paths), p_idx))
-  path_str <- paths[p_idx]
-  
-  path_nodes <- strsplit(path_str, "\\|")[[1]]
-  path_nodes <- gsub("^\\(|\\)$", "", path_nodes)
-  
-  path_list <- lapply(path_nodes, function(node) {
-    parts <- strsplit(node, ";")[[1]]
-    data.table(time_window = parts[1], population = parts[2], lineage = parts[3])
-  })
-  path_dt <- rbindlist(path_list)
-  cor_path <- merge(path_dt, all_cor, by = c("time_window", "population"), all.x = TRUE)
-  
-  # Filtrowanie pętli na podstawie okien rdzeniowych (02-04 do 16-18)
-  core_tw <- c("02-04", "04-06", "06-08", "08-10", "10-12", "12-14", "14-16", "16-18")
-  if (p_idx == 18) {
-    core_tw <- setdiff(core_tw, "08-10")
-  }
-  
-  req_tw <- intersect(core_tw, path_dt$time_window)
-  req_cor <- cor_path[time_window %in% req_tw & !is.na(loop_id) & !is.na(spearman_rho)]
-  valid_loops <- req_cor[, .(n_tw = uniqueN(time_window)), by = loop_id][n_tw == length(req_tw), loop_id]
-  
-  cor_path_filtered <- cor_path[loop_id %in% valid_loops]
-  
-  for (t_col in target_columns) {
-    plot_data <- copy(cor_path_filtered)
-    plot_data[, split_var := factor(get(t_col), levels = c("0", "1"))]
-    plot_data <- plot_data[!is.na(spearman_rho) & !is.na(split_var)]
-    
-    for (tw in unique(plot_data$time_window)) {
-      sub_dt <- plot_data[time_window == tw]
-      n0 <- nrow(sub_dt[split_var == "0"])
-      n1 <- nrow(sub_dt[split_var == "1"])
-      
-      if (n0 >= 3 && n1 >= 3) {
-        wt <- wilcox.test(spearman_rho ~ split_var, data = sub_dt)
-        test_results_list[[length(test_results_list) + 1]] <- data.table(
-          path_id = p_idx,
-          target_col = t_col,
-          time_window = tw,
-          p_value = wt$p.value,
-          n0 = n0,
-          n1 = n1
-        )
-      }
-    }
-  }
-}
-
-p_val_results <- rbindlist(test_results_list)
-
-# ==============================================================================
-# KROK 2: GLOBALNA POPRAWKA BENJAMINI-HOCHBERGA (BH / FDR) I ZAPIS DO TSV
-# ==============================================================================
-cat("\n=== KROK 2: Zastosowanie poprawki Benjamini-Hochberga (BH) ===\n")
-total_tests <- nrow(p_val_results)
-cat(sprintf("-> Łączna liczba przeprowadzonych testów Wilcoxona (M): %d\n", total_tests))
-
-if (total_tests > 0) {
-  p_val_results[, p_adj := p.adjust(p_value, method = "BH")]
-  
-  # Zapis wyników do TSV
-  fwrite(p_val_results, stats_output_file, sep = "\t")
-  cat(sprintf("-> Zapisano wyniki statystyczne do pliku TSV: %s\n", stats_output_file))
-  
-  sig_raw <- sum(p_val_results$p_value < 0.05, na.rm = TRUE)
-  sig_adj <- sum(p_val_results$p_adj < 0.05, na.rm = TRUE)
-  cat(sprintf("-> Liczba istotnych testów przed poprawką (p < 0.05): %d\n", sig_raw))
-  cat(sprintf("-> Liczba istotnych testów po poprawce BH (p_adj < 0.05): %d\n", sig_adj))
-} else {
-  warning("Brak spełnionych warunków do wykonania testów Wilcoxona!")
-}
-
-# ==============================================================================
-# KROK 3: PASS 2 - GENEROWANIE WYKRESÓW Z WYNIKAMI PO KOREKCJI BH
-# ==============================================================================
-cat("\n=== KROK 3: Generowanie przefiltrowanych wykresów i zapis do pliku PDF ===\n")
 
 pdf(output_file, width = 16, height = 12)
 
 for (p_idx in seq_along(paths)) {
-  message(sprintf("[%d/%d] Generowanie przefiltrowanych wykresów dla Path %d...", p_idx, length(paths), p_idx))
+  message("Przetwarzanie ścieżki: ", p_idx)
   path_str <- paths[p_idx]
   
   path_nodes <- strsplit(path_str, "\\|")[[1]]
@@ -164,14 +72,19 @@ for (p_idx in seq_along(paths)) {
     data.table(time_window = parts[1], population = parts[2], lineage = parts[3])
   })
   path_dt <- rbindlist(path_list)
+  
+  # Łączymy dane o przodkach z korelacjami
   cor_path <- merge(path_dt, all_cor, by = c("time_window", "population"), all.x = TRUE)
   
-  # Filtrowanie pętli na podstawie okien rdzeniowych
+  # --- FILTROWANIE PĘTLI NA PODSTAWIE OKIEN RDZENIOWYCH (02-04 DO 16-18) ---
   core_tw <- c("02-04", "04-06", "06-08", "08-10", "10-12", "12-14", "14-16", "16-18")
+  
+  # Wyjątek dla ścieżki 18: ignorujemy 08-10 przy sprawdzaniu obecności
   if (p_idx == 18) {
     core_tw <- setdiff(core_tw, "08-10")
   }
   
+  # Dynamiczny opis filtra w zależności od tego, czy jest to ścieżka 18
   filter_desc <- if (p_idx == 18) {
     "Fit quality (min EST/SE) >= 5 across core time windows (02-04 to 16-18, excluding 08-10)"
   } else {
@@ -179,17 +92,24 @@ for (p_idx in seq_along(paths)) {
   }
   
   req_tw <- intersect(core_tw, path_dt$time_window)
+  
+  # Identyfikacja pętli obecnych we wszystkich wymaganych oknach rdzeniowych
   req_cor <- cor_path[time_window %in% req_tw & !is.na(loop_id) & !is.na(spearman_rho)]
   valid_loops <- req_cor[, .(n_tw = uniqueN(time_window)), by = loop_id][n_tw == length(req_tw), loop_id]
   
+  # Zachowujemy te pętle dla WSZYSTKICH okien (w tym skrajnych 00-02 i 18-20)
   cor_path_filtered <- cor_path[loop_id %in% valid_loops]
   
+  # Iterujemy przez 9 analizowanych kolumn
   for (t_col in target_columns) {
     
     plot_data <- copy(cor_path_filtered)
     plot_data[, split_var := factor(get(t_col), levels = c("0", "1"))]
+    
+    # Filtrowanie wartości NA z danych do wykresu, aby uniknąć problemów z osiowaniem punktów
     plot_data <- plot_data[!is.na(spearman_rho) & !is.na(split_var)]
     
+    # Zliczanie N dla grup 0 i 1 po przefiltrowaniu
     counts_split <- plot_data[, .(n = .N), by = .(time_window, split_var)]
     counts_wide <- dcast(counts_split, time_window ~ split_var, value.var = "n", fill = 0, drop = FALSE)
     
@@ -197,6 +117,7 @@ for (p_idx in seq_along(paths)) {
     if (!"1" %in% names(counts_wide)) counts_wide[, `1` := 0]
     setnames(counts_wide, c("0", "1"), c("n_0", "n_1"))
     
+    # Tworzenie etykiet osi X z naprzemiennym układem 2-poziomowym i formatowaniem liczności
     path_full <- merge(template_dt, path_dt, by = "time_window", all.x = TRUE)
     path_full <- merge(path_full, counts_wide, by = "time_window", all.x = TRUE)
     path_full[is.na(n_0), n_0 := 0]
@@ -214,12 +135,13 @@ for (p_idx in seq_along(paths)) {
                                          paste0(time_window, "\n\n-\n-\n(0: 0 | 1: 0)")))]
     
     path_full$x_label <- factor(path_full$x_label, levels = path_full$x_label)
+    
     plot_data <- merge(plot_data, path_full[, .(time_window, x_base, x_label)], by = "time_window", all.x = TRUE)
     
     clean_col_name <- gsub("Dmel_", "", t_col)
     clean_col_name <- gsub("_", " ", clean_col_name)
     
-    # Funkcja tworząca połówkę wykresu
+    # Funkcja tworząca połówkę wykresu wraz z testem Wilcoxona
     create_half_plot <- function(data_subset, labels_subset, title_text, hide_x_title = FALSE) {
       
       has_data <- nrow(data_subset[!is.na(spearman_rho) & !is.na(split_var)]) > 0
@@ -236,19 +158,19 @@ for (p_idx in seq_along(paths)) {
           fill = paste("Activity status\n(", clean_col_name, ")"),
           color = paste("Activity status\n(", clean_col_name, ")")
         ) +
-        theme_minimal(base_size = 13) +
+        theme_minimal(base_size = 12) +
         theme(
-          plot.title         = element_text(size = 14, face = "bold", color = "black", margin = margin(t = 4, b = 4)),
-          axis.title.x       = element_text(size = 13, face = "bold", color = "black", margin = margin(t = 10)),
-          axis.title.y       = element_text(size = 13, face = "bold", color = "black", margin = margin(r = 8)),
-          axis.text.x        = element_text(angle = 0, hjust = 0.5, vjust = 1, lineheight = 1.1, size = 11, color = "black"),
-          axis.text.y        = element_text(size = 11, color = "black"),
-          panel.border       = element_rect(color = "black", fill = NA, linewidth = 0.5),
-          panel.grid.minor   = element_blank(),
+          plot.title = element_text(size = 13, face = "bold", color = "#2c3e50", margin = margin(t = 4, b = 4)),
+          axis.title.x = element_text(size = 11.5, face = "bold", color = "#2c3e50", margin = margin(t = 10)),
+          axis.title.y = element_text(size = 11.5, face = "bold", color = "#2c3e50", margin = margin(r = 8)),
+          axis.text.x = element_text(angle = 0, hjust = 0.5, vjust = 1, lineheight = 1.1, size = 10, color = "black"),
+          axis.text.y = element_text(size = 10, color = "black"),
+          panel.border = element_rect(color = "#dcdde1", fill = NA, linewidth = 0.4),
+          panel.grid.minor = element_blank(),
           panel.grid.major.x = element_line(color = "#f1f2f6"),
-          legend.title       = element_text(size = 12, face = "bold", color = "black"),
-          legend.text        = element_text(size = 11, color = "black"),
-          legend.position    = "right"
+          legend.title = element_text(size = 11, face = "bold", color = "#2c3e50"),
+          legend.text = element_text(size = 10),
+          legend.position = "right"
         )
       
       if (has_data) {
@@ -264,46 +186,44 @@ for (p_idx in seq_along(paths)) {
             aes(group = split_var),
             position = position_jitterdodge(jitter.width = 0.15, dodge.width = 0.8, seed = 42), 
             alpha = 0.4, 
-            size = 1.0, 
+            size = 0.8, 
             na.rm = TRUE
           )
         
-        # Nanoszenie klamer z p_adj po poprawce BH
         for (i in seq_along(labels_subset)) {
           lbl <- labels_subset[i]
-          tw_curr <- unique(data_subset[x_label == lbl]$time_window)
+          sub_dt <- data_subset[x_label == lbl & !is.na(spearman_rho) & !is.na(split_var)]
           
-          if (length(tw_curr) == 1) {
-            res_row <- p_val_results[path_id == p_idx & target_col == t_col & time_window == tw_curr]
+          n0 <- nrow(sub_dt[split_var == "0"])
+          n1 <- nrow(sub_dt[split_var == "1"])
+          
+          if (n0 >= 3 && n1 >= 3) {
+            wt <- wilcox.test(spearman_rho ~ split_var, data = sub_dt)
+            p_val <- wt$p.value
             
-            if (nrow(res_row) == 1) {
-              p_adj <- res_row$p_adj
-              
-              signif_stars <- ifelse(p_adj < 0.001, "***",
-                              ifelse(p_adj < 0.01, "**",
-                              ifelse(p_adj < 0.05, "*", "ns")))
-              
-              label_text <- if (p_adj < 0.001) "p_adj < 0.001 (***)" else sprintf("p_adj = %.3f (%s)", p_adj, signif_stars)
-              
-              sub_dt <- data_subset[x_label == lbl & !is.na(spearman_rho) & !is.na(split_var)]
-              y_max_local <- max(sub_dt$spearman_rho, na.rm = TRUE)
-              y_pos <- y_max_local + 0.08
-              
-              p <- p + geom_signif(
-                annotation = label_text,
-                xmin = i - 0.2,
-                xmax = i + 0.2,
-                y_position = y_pos,
-                tip_length = 0.02,
-                textsize = 4.0,
-                color = "black"
-              )
-            }
+            signif_stars <- ifelse(p_val < 0.001, "***",
+                            ifelse(p_val < 0.01, "**",
+                            ifelse(p_val < 0.05, "*", "ns")))
+            
+            label_text <- if (p_val < 0.001) "p < 0.001 (***)" else sprintf("p = %.3f (%s)", p_val, signif_stars)
+            
+            y_max_local <- max(sub_dt$spearman_rho, na.rm = TRUE)
+            y_pos <- y_max_local + 0.08
+            
+            p <- p + geom_signif(
+              annotation = label_text,
+              xmin = i - 0.2,
+              xmax = i + 0.2,
+              y_position = y_pos,
+              tip_length = 0.02,
+              textsize = 3.8,
+              color = "black"
+            )
           }
         }
       } else {
         p <- p + annotate("text", x = 3, y = mean(c(global_y_min, global_y_max)), 
-                          label = "No valid loops", color = "red", fontface = "italic", size = 5)
+                          label = "No valid loops", color = "red", fontface = "italic", size = 4.5)
       }
       return(p)
     }
@@ -312,20 +232,20 @@ for (p_idx in seq_along(paths)) {
     labels_part2 <- path_full[x_base > 5]$x_label
     
     p1 <- create_half_plot(plot_data[x_base <= 5], labels_part1, 
-                           "Time windows (00-02) - (08-10)", hide_x_title = TRUE)
+                           paste("Time windows (00-02) - (08-10)"), hide_x_title = TRUE)
     
     p2 <- create_half_plot(plot_data[x_base > 5], labels_part2, 
-                           "Time windows (10-12) - (18-20)", hide_x_title = FALSE)
+                           paste("Time windows (10-12) - (18-20)"), hide_x_title = FALSE)
     
     final_plot <- p1 / p2 + 
       plot_annotation(
         title = bquote(bold("Estimated Spearman's correlation across cell lineage (Path " * .(p_idx) * " - Filtered)")),
         subtitle = paste0("<b>Split by:</b> Loop activity status (<i>", clean_col_name, "</i>) | ",
-                          "<b>Difference measured by:</b> Wilcoxon rank-sum test (BH FDR adjusted)<br>",
-                          "<span style='color: black; font-style: italic;'><b>Filter applied:</b> ", filter_desc, "</span>"),
+                          "<b>Difference measured by:</b> Wilcoxon rank-sum test<br>",
+                          "<span style='color: #2c3e50; font-style: italic;'><b>Filter applied:</b> ", filter_desc, "</span>"),
         theme = theme(
-          plot.title    = element_text(size = 17, face = "bold", hjust = 0.5, color = "black", margin = margin(t = 6, b = 4)),
-          plot.subtitle = element_markdown(size = 12.5, hjust = 0.5, color = "black", lineheight = 1.3, margin = margin(b = 6))
+          plot.title = element_text(size = 16, hjust = 0.5, color = "#2c3e50", margin = margin(t = 6, b = 4)),
+          plot.subtitle = element_markdown(size = 11.5, hjust = 0.5, color = "#2c3e50", lineheight = 1.3, margin = margin(b = 6))
         )
       ) +
       plot_layout(guides = "collect")
@@ -335,6 +255,4 @@ for (p_idx in seq_along(paths)) {
 }
 
 dev.off()
-cat("\n=== SUKCES! Proces zakończony pomyślnie ===")
-cat("\nWykresy ze skorygowanymi wartościami p_adj zapisano do pliku:\n", output_file)
-cat("\nStatystyki i wartości p_adj zapisano do pliku:\n", stats_output_file, "\n")
+cat("Sukces! Wygenerowano plik PDF ze wszystkimi przefiltrowanymi wykresami i testami Wilcoxona:\n", output_file, "\n")

@@ -22,7 +22,7 @@ rule evaluate_mglmreg_window_tissue:
     input:
         script = RSCRIPT,
         pop_map = os.path.join(RESULTSDIR, "cluster_pop_mapping.tsv.gz"),
-        fit_cor = os.path.join(RESULTSDIR, "MGLMfit_GDM_cor", "real_data", "pops", "init_default", "cor_{tw}.tsv.gz")
+        fit_cor = os.path.join(RESULTSDIR, "MGLMfit_GDM_cor", "real_data", "pops", "init_1e-6", "cor_{tw}.tsv.gz")
     output:
         tsv = os.path.join(OUT_DIR, "eval_cor_{tw}.tsv.gz")
     log:

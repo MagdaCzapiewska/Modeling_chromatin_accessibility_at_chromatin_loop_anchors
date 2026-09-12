@@ -104,10 +104,17 @@ if (length(results_list) > 0) {
   alpha_threshold <- 0.05
   
   # Poprawka BH aplikowana WYŁĄCZNIE dla udanych dopasowań (SUCCESS)
+  #if ("Pr(>wald)" %in% names(results_dt)) {
+  #  results_dt[fit_status == "SUCCESS" & !is.na(`Pr(>wald)`), 
+  #             padj_BH := p.adjust(`Pr(>wald)`, method = "BH"), 
+  #             by = parameter]
+  #  results_dt[, is_significant := !is.na(padj_BH) & padj_BH < alpha_threshold]
+  #}
+  # Poprawka BH aplikowana globalnie dla WSZYSTKICH udanych dopasowań (SUCCESS)
   if ("Pr(>wald)" %in% names(results_dt)) {
     results_dt[fit_status == "SUCCESS" & !is.na(`Pr(>wald)`), 
-               padj_BH := p.adjust(`Pr(>wald)`, method = "BH"), 
-               by = parameter]
+               padj_BH := p.adjust(`Pr(>wald)`, method = "BH")]
+    
     results_dt[, is_significant := !is.na(padj_BH) & padj_BH < alpha_threshold]
   }
 

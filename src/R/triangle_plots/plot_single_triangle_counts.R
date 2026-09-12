@@ -144,6 +144,7 @@ center <- dt[, .(
 mean_out <- mean(dt$x_out)
 # threshold = 1 - 2 * (1 - mean_out) = 2 * mean_out - 1
 threshold <- 2 * mean_out - 1
+#threshold <- threshold + (1 - threshold) * 999/1000
 
 dts <- dt[x_out >= threshold, ]
 dts[, x_out := (x_out - threshold) / (1 - threshold)]
@@ -220,9 +221,9 @@ p1 <- ggtern(dts, aes(x = x_A1, y = x_out, z = x_A2)) +
   scale_T_continuous(breaks = (breaks_T - threshold) / (1 - threshold), labels = labels_T) +
   scale_R_continuous(breaks = breaks_LR / (1 - threshold), labels = labels_LR) +
   scale_fill_viridis_c(
-    option = "D",
-    trans = "log2",
-    na.value = "white"
+    option = "D"#,
+    #trans = "log2",
+    #na.value = "white"
   ) +
   theme_bw() +
   theme_showarrows() +

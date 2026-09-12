@@ -9,7 +9,7 @@ OUT_BASE_DIR = os.path.join(RESULTSDIR, "MGLMfit_GDM_cor", "synthetic_data_exten
 RSCRIPT = os.path.join(config['paths']['Rsrcdir'], "MGLMfit_GDM_cor", "cor_synthetic_extended_plus.R")
 
 RHOS = [-0.6, -0.4, -0.2, 0.0, 0.2, 0.4, 0.6]
-SEEDS = list(range(100))
+SEEDS = list(range(1000))
 INITS = ["1e-6"]
 
 rule all:

@@ -56,7 +56,7 @@ if (!"loop_id" %in% names(loops_table)) {
 loops_of_interest <- loops_table$loop_id
 loops_of_interest <- loops_of_interest[order(as.integer(sub("^L", "", loops_of_interest)))]
 
-# 4. Color map & legend labels definitions (if colored)
+# 4. Color map definitions (if colored)
 color_map <- c(
   "10" = "#99FF99", 
   "5"  = "#FFFF99", 
@@ -66,14 +66,20 @@ color_map <- c(
   "NA" = "#D3D3D3"
 )
 
-legend_labels <- c(
-  "10" = "Excellent (min EST/SE >= 10)",
-  "5"  = "Good (min EST/SE >= 5)",
-  "2"  = "Acceptable (min EST/SE >= 2)",
-  "1"  = "Poor (min EST/SE >= 1)",
-  "0"  = "Unstable (min EST/SE < 1)",
-  "NA" = "Not Available / Failed"
-)
+# Unified theme with black text, bold axis labels, and no legend
+custom_theme <- theme_minimal(base_size = 12) +
+  theme(
+    plot.title         = element_text(size = 13, face = "bold", hjust = 0.5, color = "black", margin = margin(b = 6)),
+    plot.subtitle      = element_text(size = 11, hjust = 0.5, color = "black", margin = margin(b = 8)),
+    axis.title         = element_text(size = 11, face = "bold", color = "black"),
+    axis.text          = element_text(size = 10, color = "black"),
+    axis.text.x        = element_text(angle = 45, hjust = 1, color = "black"),
+    legend.position    = "none",
+    panel.grid.minor   = element_blank(),
+    panel.grid.major.x = element_line(color = "gray92"),
+    panel.grid.major.y = element_line(color = "gray92"),
+    panel.border       = element_rect(color = "#dcdde1", fill = NA, linewidth = 0.5)
+  )
 
 # 5. Define time windows and load ALL data once into memory
 time_windows <- c("00-02", "02-04", "04-06", "06-08", "08-10", "10-12", "12-14", "14-16", "16-18", "18-20")
@@ -125,7 +131,7 @@ full_pdf_path <- file.path(output_folder, pdf_filename)
 
 cat("Generating multi-page PDF plot at:", full_pdf_path, "...\n")
 
-pdf(full_pdf_path, width = if (is_colored) 11 else 10, height = 5)
+pdf(full_pdf_path, width = 8, height = 5)
 
 found_count <- 0
 
@@ -140,47 +146,29 @@ for (lid in loops_of_interest) {
 
   if (is_colored) {
     p <- ggplot(dt_sub, aes(x = time_window, y = spearman_rho, group = 1)) +
-      geom_line(color = "grey40", size = 1.0, alpha = 0.8) +
+      geom_line(color = "grey40", linewidth = 1.0, alpha = 0.8) +
       geom_point(aes(fill = min_est_cat), shape = 21, color = "black", size = 3.8, stroke = 0.8) +
       scale_y_continuous(limits = c(-1, 1), breaks = seq(-1, 1, 0.2)) +
-      scale_fill_manual(
-        values = color_map,
-        labels = legend_labels,
-        drop = FALSE
-      ) +
-      theme_minimal(base_size = 13) +
+      scale_fill_manual(values = color_map, drop = FALSE) +
       labs(
-        title = paste("Spearman correlation across time windows for loop", lid, "(All cells)"),
+        title = paste("Estimated Spearman's correlation across time windows for loop", lid),
+        subtitle = "Fit for all cells in a time window",
         x = "Time window",
-        y = "Spearman correlation (rho)",
-        fill = "Estimation Quality\n(min EST / SE)"
+        y = "Estimated Spearman's correlation (rho)"
       ) +
-      theme(
-        plot.title = element_text(face = "bold", size = 13),
-        axis.text.x = element_text(angle = 45, hjust = 1, face = "bold"),
-        legend.position = "right",
-        panel.grid.minor = element_blank(),
-        panel.grid.major.x = element_line(color = "gray92"),
-        panel.grid.major.y = element_line(color = "gray92")
-      )
+      custom_theme
   } else {
     p <- ggplot(dt_sub, aes(x = time_window, y = spearman_rho, group = 1)) +
-      geom_line(color = "steelblue", size = 1.2, alpha = 0.8) +
+      geom_line(color = "steelblue", linewidth = 1.2, alpha = 0.8) +
       geom_point(color = "black", fill = "skyblue", shape = 21, size = 3.5, stroke = 1.0) +
       scale_y_continuous(limits = c(-1, 1), breaks = seq(-1, 1, 0.2)) +
-      theme_minimal(base_size = 13) +
       labs(
-        title = paste("Spearman correlation across time windows for loop", lid, "(All cells)"),
+        title = paste("Estimated Spearman's correlation across time windows for loop", lid),
+        subtitle = "Fit for all cells in a time window",
         x = "Time window",
-        y = "Spearman correlation (rho)"
+        y = "Estimated Spearman's correlation (rho)"
       ) +
-      theme(
-        plot.title = element_text(face = "bold", size = 13),
-        axis.text.x = element_text(angle = 45, hjust = 1, face = "bold"),
-        panel.grid.minor = element_blank(),
-        panel.grid.major.x = element_line(color = "gray92"),
-        panel.grid.major.y = element_line(color = "gray92")
-      )
+      custom_theme
   }
   
   print(p)

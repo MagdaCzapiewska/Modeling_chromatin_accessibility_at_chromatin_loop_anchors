@@ -190,9 +190,9 @@ p1 <- ggtern(grid_dt, aes(x = x_A1, y = x_out, z = x_A2, color = density)) +
   scale_T_continuous(breaks = (breaks_T - threshold) / (1 - threshold), labels = labels_T) +
   scale_R_continuous(breaks = breaks_LR / (1 - threshold), labels = labels_LR) +
   scale_color_viridis_c(
-    option = "D",
-    trans = "log2",
-    na.value = "white",
+    option = "D",#,
+    #trans = "log2",
+    #na.value = "white",
     name = "Density"
   ) +
   theme_bw() +

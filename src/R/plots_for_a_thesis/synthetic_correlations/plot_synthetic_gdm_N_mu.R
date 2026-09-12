@@ -19,10 +19,10 @@ config <- yaml::yaml.load_file(config_path)
 
 resultsdir <- config$paths$resultsdir
 
-INPUT_DIR       <- file.path(resultsdir, "MGLMfit_GDM_cor", "synthetic_data_extended")
-OUTPUT_BASE_DIR <- file.path(resultsdir, "plots_for_a_thesis")
+INPUT_DIR       <- file.path(resultsdir, "MGLMfit_GDM_cor", "synthetic_data_extended_plus")
+OUTPUT_BASE_DIR <- file.path(resultsdir, "plots_for_a_thesis", "synthetic_correlations")
 INIT_VAL        <- "1e-6"
-SELECTED_SEEDS  <- 0:20
+SELECTED_SEEDS  <- 0:999
 
 N_CELLS <- c(1000, 2000, 5000, 10000, 20000)  # Wiersze (N)
 MUS     <- c(1000, 2000, 3000, 4000, 5000)   # Kolumny (mu)

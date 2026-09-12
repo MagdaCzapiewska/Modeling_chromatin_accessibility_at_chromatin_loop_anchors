@@ -122,21 +122,23 @@ for (p_idx in seq_along(paths)) {
     coord_cartesian(ylim = c(global_y_min, global_y_max)) +
     labs(
       title = bquote(bold("Estimated Spearman's correlation along cell lineage - shared loops (Path " * .(p_idx) * ")")),
-      subtitle = "<b>Filter applied:</b> Included chromatin loops with fit quality metric (min EST/SE ≥ 5) present across all required time windows",
+      subtitle = "<b>Filter applied:</b> Included chromatin loops with fit quality metric (min EST/SE &ge; 5) present across all required time windows",
       x = "Time window\nPopulation\nLineage\nNumber of loops (n)",
       y = "Estimated Spearman's correlation (rho)"
     ) +
-    theme_minimal(base_size = 11) +
+    theme_minimal(base_size = 13) +
     theme(
-      plot.title = element_text(size = 13, hjust = 0.5, color = "#2c3e50", margin = margin(t = 6, b = 2)),
-      plot.subtitle = element_markdown(size = 9.5, hjust = 0.5, color = "#2c3e50", lineheight = 1.25, margin = margin(b = 6)),
-      axis.title.x = element_text(size = 10, face = "bold", color = "#2c3e50", margin = margin(t = 8)),
-      axis.title.y = element_text(size = 10, face = "bold", color = "#2c3e50", margin = margin(r = 6)),
-      axis.text.x = element_text(angle = 0, hjust = 0.5, vjust = 1, lineheight = 1.1, size = 8.5, color = "black"),
-      panel.border = element_rect(color = "#dcdde1", fill = NA, linewidth = 0.4),
-      panel.grid.minor = element_blank(),
+      plot.title         = element_text(size = 16, face = "bold", hjust = 0.5, color = "black", margin = margin(t = 6, b = 4)),
+      plot.subtitle      = element_markdown(size = 12, hjust = 0.5, color = "black", lineheight = 1.25, margin = margin(b = 8)),
+      axis.title.x       = element_text(size = 13, face = "bold", color = "black", margin = margin(t = 10)),
+      axis.title.y       = element_text(size = 13, face = "bold", color = "black", margin = margin(r = 8)),
+      axis.text          = element_text(size = 10.5, color = "black"),
+      axis.text.x        = element_text(angle = 0, hjust = 0.5, vjust = 1, lineheight = 1.1, size = 10.5, color = "black"),
+      axis.text.y        = element_text(size = 10.5, color = "black"),
+      panel.border       = element_rect(color = "#dcdde1", fill = NA, linewidth = 0.4),
+      panel.grid.minor   = element_blank(),
       panel.grid.major.x = element_line(color = "#f1f2f6"),
-      plot.margin = margin(t = 10, r = 10, b = 10, l = 10)
+      plot.margin        = margin(t = 10, r = 10, b = 10, l = 10)
     )
   
   if (has_data) {
@@ -147,7 +149,7 @@ for (p_idx in seq_along(paths)) {
   } else {
     p <- p + 
       annotate("text", x = 5.5, y = mean(c(global_y_min, global_y_max)), 
-               label = "No loops present across all required time windows with min EST/SE ≥ 5", color = "red", fontface = "italic")
+               label = "No loops present across all required time windows with min EST/SE ≥ 5", color = "red", fontface = "italic", size = 5)
   }
   
   # Zapis do zbiorczego pliku PDF

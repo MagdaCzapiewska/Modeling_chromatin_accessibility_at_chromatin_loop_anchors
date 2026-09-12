@@ -9,6 +9,7 @@ if (length(args) < 2) {
 tw          <- args[1]
 output_file <- args[2]
 init_type   <- if (length(args) >= 3) args[3] else "default"
+fit_init_type <- "1e-6"
 
 message("==================================================")
 message(sprintf("Start przetwarzania okna czasowego: %s (10h+ tissue)", tw))
@@ -76,7 +77,7 @@ sim_gdm_rho <- function(sorted_names, alpha_vec, beta_vec, n_sim = 10000) {
 }
 
 # Plik korelacji dla poszczególnych populacji
-fit_cor_file <- file.path(resultsdir, "MGLMfit_GDM_cor", "real_data", "pops", paste0("init_", init_type), paste0("cor_", tw, ".tsv.gz"))
+fit_cor_file <- file.path(resultsdir, "MGLMfit_GDM_cor", "real_data", "pops", paste0("init_", fit_init_type), paste0("cor_", tw, ".tsv.gz"))
 if (!file.exists(fit_cor_file)) {
   stop("Nie znaleziono pliku MGLMfit cor populacji: ", fit_cor_file)
 }
