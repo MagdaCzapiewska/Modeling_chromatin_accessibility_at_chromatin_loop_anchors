@@ -7,13 +7,11 @@ library(viridis)
 library(yaml)
 
 ##########################################################
-# 1. PARSOWANIE ARGUMENTÓW WEJŚCIOWYCH
-##########################################################
 
 args <- commandArgs(trailingOnly = TRUE)
 
 if (length(args) < 5) {
-  stop("Użycie: Rscript plot_thesis_triangles_pop.R <loop_id> <time_window> <mode: fit|reg> <log: linear|log2> <scale_mode: global|local>")
+  stop("Usage: Rscript plot_thesis_triangles_pop.R <loop_id> <time_window> <mode: fit|reg> <log: linear|log2> <scale_mode: global|local>")
 }
 
 loop_id_arg <- as.character(args[1])
@@ -23,40 +21,36 @@ log_arg     <- tolower(args[4])
 scale_mode  <- tolower(args[5])
 
 if (!mode_type %in% c("fit", "reg")) {
-  stop("Parametr 'mode' musi przyjmować wartość 'fit' lub 'reg'.")
+  stop("Parameter 'mode' should be 'fit' or 'reg'.")
 }
 
 use_log2 <- log_arg %in% c("log2", "log", "true", "t", "1")
 scale_label <- if (use_log2) "log2" else "linear"
 
 if (!scale_mode %in% c("global", "local")) {
-  stop("Parametr 'scale_mode' musi przyjmować wartość 'global' lub 'local'.")
+  stop("Parameter 'scale_mode' should be 'global' or 'local'.")
 }
 
-cat(sprintf("Generowanie pojedynczych plików PDF dla populacji: Loop = %s | TW = %s | Tryb = %s | Skala = %s | Tryb skali = %s\n",
+cat(sprintf("Generating PDFs for: Loop = %s | TW = %s | Mode = %s | Scale = %s | Scale mode = %s\n",
             loop_id_arg, tw_arg, mode_type, scale_label, scale_mode))
 
-##########################################################
-# 2. KONFIGURACJA I ŚCIEŻKI
 ##########################################################
 
 config_path <- file.path("config", "config.yml")
 if (!file.exists(config_path)) {
-  stop("Nie znaleziono pliku konfiguracji: ", config_path)
+  stop("File not found: ", config_path)
 }
 config <- yaml::yaml.load_file(config_path)
 resultsdir <- config$paths$resultsdir
 
-# Folder wyjściowy w katalogu 'time_tissue'
 folder_name <- paste0("loop_", loop_id_arg, "_tw_", tw_arg, "_", mode_type, "_", scale_mode, "_", scale_label)
 out_dir     <- file.path(resultsdir, "triangle_plots", "for_thesis", "time_tissue", "one_mode", folder_name)
 dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
 
-# Plik ewaluacyjny dla populacji
 eval_file <- file.path(resultsdir, "MGLMreg", "eval_10h+_time_tissue_default", paste0("eval_cor_", tw_arg, ".tsv.gz"))
 
 if (!file.exists(eval_file)) {
-  stop("Nie znaleziono pliku ewaluacji: ", eval_file)
+  stop("Eval file not found: ", eval_file)
 }
 
 dt_eval <- fread(eval_file)
@@ -64,7 +58,7 @@ dt_eval[, loop_id := as.character(loop_id)]
 dt_sub <- dt_eval[loop_id == loop_id_arg]
 
 if (nrow(dt_sub) == 0) {
-  stop(sprintf("Brak danych dla loop_id=%s w oknie %s", loop_id_arg, tw_arg))
+  stop(sprintf("No data for loop_id=%s in time window %s", loop_id_arg, tw_arg))
 }
 
 setorder(dt_sub, population)
@@ -72,8 +66,6 @@ setorder(dt_sub, population)
 prefix <- paste0(mode_type, "_")
 grid_res <- 150
 
-##########################################################
-# 3. FUNKCJA ANALITYCZNEJ GĘSTOŚCI GDM3
 ##########################################################
 
 dgdm3 <- function(x1, x2, x3, alpha, beta, log = FALSE, log_base = 2) {
@@ -104,8 +96,6 @@ dgdm3 <- function(x1, x2, x3, alpha, beta, log = FALSE, log_base = 2) {
 }
 
 ##########################################################
-# 4. KROK 1: PRZYGOTOWANIE DANYCH I WYZNACZENIE SKALI GLOBALNEJ
-##########################################################
 
 plot_data_list <- list()
 global_min_density <- Inf
@@ -128,7 +118,7 @@ for (i in seq_len(nrow(dt_sub))) {
   b_A2  <- row_dt[[paste0(prefix, "beta_x_A2_est")]]
 
   if (is.na(a_out) || is.na(b_out) || a_out <= 0 || b_out <= 0) {
-    cat(sprintf("Pominięto populację %s (brak parametrów dla x_out)\n", pop_id))
+    cat(sprintf("Skipped population %s (no parameters for x_out)\n", pop_id))
     next
   }
 
@@ -143,7 +133,7 @@ for (i in seq_len(nrow(dt_sub))) {
     a2 <- a_A2
     b2 <- b_A2
   } else {
-    cat(sprintf("Pominięto populację %s (brak parametrów drugiego kroku)\n", pop_id))
+    cat(sprintf("Skipped population %s (no second step parameters)\n", pop_id))
     next
   }
 
@@ -200,7 +190,6 @@ for (i in seq_len(nrow(dt_sub))) {
     metric_line <- sprintf("reg_status = %s", status_str)
   }
   
-  # Pięciowierszowy nagłówek z dodaną informacją o populacji
   title_text <- sprintf("Loop: %s\nTime window: %s\nPopulation: %s\nSpearman's rho = %s\n%s", 
                         loop_id_arg, tw_arg, pop_id, rho_str, metric_line)
 
@@ -216,11 +205,9 @@ for (i in seq_len(nrow(dt_sub))) {
 }
 
 if (length(plot_data_list) == 0) {
-  stop("Brak danych do wygenerowania wykresów.")
+  stop("No data for plots.")
 }
 
-##########################################################
-# 5. KROK 2: GENEROWANIE I ZAPIS OSOBNYCH PLIKÓW PDF
 ##########################################################
 
 page_idx <- 1
@@ -272,7 +259,6 @@ for (pop_id in names(plot_data_list)) {
     theme_bw() +
     theme_showarrows() +
     theme(
-      # Zmniejszone paddingi wokół trójkąta i osi
       tern.panel.expand = 0.30,
       tern.axis.arrow.sep = 0.20,
       tern.axis.text = element_text(size = 15, color = "black"),
@@ -280,7 +266,6 @@ for (pop_id in names(plot_data_list)) {
       legend.position = "bottom",
       legend.title = element_text(size = 16, face = "bold"),
       legend.margin = margin(t = -10),
-      # Wielowierszowy nagłówek dociągnięty do trójkąta
       plot.title = element_text(
         hjust = 0.5, 
         size = 18, 
@@ -294,7 +279,6 @@ for (pop_id in names(plot_data_list)) {
   page_num_str <- sprintf("%02d", page_idx)
   single_pdf_file <- file.path(out_dir, paste0(folder_name, "_", page_num_str, ".pdf"))
   
-  # Wysokość 9.0 cali idealnie mieści 5-wierszowy tytuł z dużą czcionką
   pdf(single_pdf_file, width = 8, height = 9.0)
   print(p)
   dev.off()
@@ -302,4 +286,4 @@ for (pop_id in names(plot_data_list)) {
   page_idx <- page_idx + 1
 }
 
-cat(sprintf("Zapisano %d indywidualnych plików PDF dla populacji w folderze:\n%s\n", length(plot_data_list), out_dir))
+cat(sprintf("Saved %d individual PDFs for populations in directory:\n%s\n", length(plot_data_list), out_dir))

@@ -5,24 +5,19 @@ configfile: "config/config.yml"
 RESULTSDIR = config["paths"]["resultsdir"]
 INITS = ["default", "1e-6"]
 
-# Ścieżki wejściowe korelacji (zgodnie z Twoimi poprzednimi Snakefile'ami)
 DIR_REAL_ALL = os.path.join(RESULTSDIR, "MGLMfit_GDM_cor", "real_data", "all")
 DIR_REAL_POPS = os.path.join(RESULTSDIR, "MGLMfit_GDM_cor", "real_data", "pops")
 
-# Skrypt rysujący
 PLOT_SCRIPT = os.path.join(config['paths']['Rsrcdir'], "MGLMfit_GDM_cor", "plot_real_correlations.R")
 
 rule all:
     input:
-        # Pliki wyjściowe dla analizy globalnej (all)
         expand(os.path.join(DIR_REAL_ALL, "init_{init}", "plots_report.pdf"), init=INITS),
-        # Pliki wyjściowe dla analizy populacyjnej (pops)
         expand(os.path.join(DIR_REAL_POPS, "init_{init}", "plots_report.pdf"), init=INITS)
 
 rule plot_real_all_correlations:
     input:
         script = PLOT_SCRIPT,
-        # Reguła odpali się, gdy wszystkie pliki okien czasowych dla danego init będą gotowe
         files = expand(os.path.join(DIR_REAL_ALL, "init_{{init}}", "cor_{tw}.tsv.gz"), tw=["00-02", "02-04", "04-06", "06-08", "08-10", "10-12", "12-14", "14-16", "16-18", "18-20"])
     output:
         os.path.join(DIR_REAL_ALL, "init_{init}", "plots_report.pdf")
@@ -30,7 +25,6 @@ rule plot_real_all_correlations:
         os.path.join(DIR_REAL_ALL, "logs", "plotting_init_{init}.log")
     shell:
         """
-        # Obliczamy ścieżkę do katalogu nadrzędnego dla plików .tsv.gz
         INPUT_DIR=$(dirname "{input.files[0]}")
         
         Rscript {input.script} \
@@ -43,7 +37,6 @@ rule plot_real_all_correlations:
 rule plot_real_pops_correlations:
     input:
         script = PLOT_SCRIPT,
-        # POPRAWKA: Zamiana {{{init}}} na {{init}}
         files = expand(os.path.join(DIR_REAL_POPS, "init_{{init}}", "cor_{tw}.tsv.gz"), tw=["00-02", "02-04", "04-06", "06-08", "08-10", "10-12", "12-14", "14-16", "16-18", "18-20"])
     output:
         os.path.join(DIR_REAL_POPS, "init_{init}", "plots_report.pdf")

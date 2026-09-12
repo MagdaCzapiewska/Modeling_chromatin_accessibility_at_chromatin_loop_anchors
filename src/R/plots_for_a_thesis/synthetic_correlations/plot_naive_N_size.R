@@ -2,11 +2,8 @@ library(data.table)
 library(ggplot2)
 library(patchwork)
 library(ggtext)
-library(scales) # Dodano dla obsługi formatowania osi (label_comma)
+library(scales)
 
-# ==============================================================================
-# CONFIGURATION
-# ==============================================================================
 config_path <- file.path("config", "config.yml")
 config <- yaml::yaml.load_file(config_path)
 
@@ -21,25 +18,18 @@ SELECTED_SEEDS  <- 0:999
 N_CELLS <- c(1000, 2000, 5000, 10000, 20000)
 SIZES   <- c("0.5", "1.0", "2.0", "inf", "fixed")
 
-# Formatowanie MU z przecinkiem dla nagłówków (np. "5,000")
 mu_formatted <- format(CURRENT_MU, big.mark = ",")
 
-# ==============================================================================
-# WCZYTYWANIE DANYCH
-# ==============================================================================
 rho_str <- format(EXPECTED_RHO, nsmall = 1)
 search_path <- file.path(INPUT_DIR, paste0("rho_", rho_str))
 files <- file.path(search_path, paste0("naive_cor_seed", SELECTED_SEEDS, ".tsv.gz"))
 existing_files <- files[file.exists(files)]
 
-if (length(existing_files) == 0) stop("Brak plików z danymi!")
+if (length(existing_files) == 0) stop("No files with data!")
 dt <- rbindlist(lapply(existing_files, fread))
 
 dir.create(OUTPUT_BASE_DIR, recursive = TRUE, showWarnings = FALSE)
 
-# ==============================================================================
-# MODYFIKOWANY MOTYW DLA MAŁEJ STRONY
-# ==============================================================================
 matrix_theme <- function(row_idx, col_idx, total_rows, total_cols) {
   theme_minimal(base_size = 11) + 
     theme(
@@ -54,10 +44,7 @@ matrix_theme <- function(row_idx, col_idx, total_rows, total_cols) {
     )
 }
 
-# ==============================================================================
-# PDF 1: PEARSON
-# ==============================================================================
-cat("Generuję PDF dla korelacji Pearsona (Kompaktowy format)... \n")
+
 pearson_plots <- list()
 
 for (r in seq_along(SIZES)) {
@@ -67,7 +54,6 @@ for (r in seq_along(SIZES)) {
     
     sub_dt <- dt[mu == CURRENT_MU & size_nb == current_size & n == current_n]
     
-    # Formatowanie liczby N z przecinkiem tysięcznym (np. "N = 10,000")
     title_text <- if (r == 1) paste0("N = ", format(current_n, big.mark = ",")) else ""
     
     p <- ggplot(sub_dt, aes(x = pearson_r)) +
@@ -75,7 +61,7 @@ for (r in seq_along(SIZES)) {
       xlim(-1, 1) + 
       geom_vline(xintercept = EXPECTED_RHO, linetype = "dashed", color = "#e74c3c", linewidth = 0.6) +
       labs(title = title_text) +
-      scale_y_continuous(n.breaks = 3, labels = label_comma()) + # Dodany przecinek na osi Y
+      scale_y_continuous(n.breaks = 3, labels = label_comma()) +
       matrix_theme(r, c, length(SIZES), length(N_CELLS))
     
     if (c == 1) {
@@ -103,10 +89,6 @@ print(combined_pearson)
 dev.off()
 
 
-# ==============================================================================
-# PDF 2: SPEARMAN
-# ==============================================================================
-cat("Generuję PDF dla korelacji Spearmana (Kompaktowy format)... \n")
 spearman_plots <- list()
 
 for (r in seq_along(SIZES)) {
@@ -116,7 +98,6 @@ for (r in seq_along(SIZES)) {
     
     sub_dt <- dt[mu == CURRENT_MU & size_nb == current_size & n == current_n]
     
-    # Formatowanie liczby N z przecinkiem tysięcznym (np. "N = 10,000")
     title_text <- if (r == 1) paste0("N = ", format(current_n, big.mark = ",")) else ""
     
     p <- ggplot(sub_dt, aes(x = spearman_rho)) +
@@ -124,7 +105,7 @@ for (r in seq_along(SIZES)) {
       xlim(-1, 1) + 
       geom_vline(xintercept = EXPECTED_RHO, linetype = "dashed", color = "#e74c3c", linewidth = 0.6) +
       labs(title = title_text) +
-      scale_y_continuous(n.breaks = 3, labels = label_comma()) + # Dodany przecinek na osi Y
+      scale_y_continuous(n.breaks = 3, labels = label_comma()) +
       matrix_theme(r, c, length(SIZES), length(N_CELLS))
     
     if (c == 1) {
@@ -157,4 +138,3 @@ pdf(file.path(OUTPUT_BASE_DIR, "naive_matrix_spearman.pdf"), width = length(N_CE
 print(combined_spearman)
 dev.off()
 
-cat("Sukces! Wygenerowano pliki PDF ze sformatowanymi wartościami tysięcznymi.\n")

@@ -6,13 +6,13 @@ library(ggtext)
 args <- commandArgs(trailingOnly = TRUE)
 
 if (length(args) < 2) {
-  stop("Błąd: Wymagane są 2 argumenty! Użycie: Rscript script.R <mu> <size>")
+  stop("Usage: Rscript script.R <mu> <size>")
 }
 
-CURRENT_MU   <- args[1]  # np. "5000"
-CURRENT_SIZE <- args[2]  # np. "1.0"
+CURRENT_MU   <- args[1]  # e.g. "5000"
+CURRENT_SIZE <- args[2]  # e.g. "1.0"
 
-cat("Uruchamianie dla MU =", CURRENT_MU, "| SIZE =", CURRENT_SIZE, "\n")
+cat("MU =", CURRENT_MU, "| SIZE =", CURRENT_SIZE, "\n")
 
 config_path <- file.path("config", "config.yml")
 config <- yaml::yaml.load_file(config_path)
@@ -45,12 +45,10 @@ legend_labels <- c(
   "NA" = "Not Available / Failed"
 )
 
-# Pomocnicza funkcja do formatowania liczby obserwacji N (np. 10,000)
+
 format_n <- function(x) format(x, big.mark = ",", scientific = FALSE)
 
-# ==============================================================================
-# WCZYTYWANIE I AGREGACJA DANYCH Z KATALOGÓW RHO
-# ==============================================================================
+
 all_data_list <- list()
 
 for (r_val in RHOS) {
@@ -61,27 +59,24 @@ for (r_val in RHOS) {
   existing_files <- files[file.exists(files)]
   
   if (length(existing_files) > 0) {
-    cat("Wczytuję", length(existing_files), "plików dla rho =", rho_str, "\n")
+    cat("Reading", length(existing_files), "files for rho =", rho_str, "\n")
     dt_rho <- rbindlist(lapply(existing_files, fread))
     all_data_list[[as.character(r_val)]] <- dt_rho
   } else {
-    warning(paste("Brak plików dla rho =", rho_str, "w ścieżce:", search_path))
+    warning(paste("No files for rho =", rho_str, "on path", search_path))
   }
 }
 
-if (length(all_data_list) == 0) stop("Nie wczytano żadnych danych! Sprawdź ścieżki.")
+if (length(all_data_list) == 0) stop("No data read! Check paths.")
 dt <- rbindlist(all_data_list)
 
-# Filtrowanie pod stałe parametry ORAZ dokładne wartości N_CELLS
 dt <- dt[as.character(mu) == CURRENT_MU & 
          as.character(size_nb) == CURRENT_SIZE & 
          n %in% N_CELLS]
 
 dir.create(OUTPUT_BASE_DIR, recursive = TRUE, showWarnings = FALSE)
 
-# ==============================================================================
-# OBLICZANIE I ZAPIS STATYSTYK DLA KOMBINACJI (RHO, N)
-# ==============================================================================
+
 stats_dt <- dt[, .(
   n_datasets         = .N,
   mean_spearman_rho  = mean(spearman_rho, na.rm = TRUE),
@@ -97,12 +92,6 @@ output_stats_path <- file.path(
 )
 
 fwrite(stats_dt, output_stats_path, sep = "\t", compress = "gzip")
-cat("Zapisano statystyki do:", output_stats_path, "\n")
-
-# ==============================================================================
-# WYKRES LINII: MEAN, SD ORAZ DISTANCE VS N (Z LINIĄ A PRIORI RHO)
-# ==============================================================================
-cat("Generuję PDF z liniami statystyk w zależności od N... \n")
 
 stats_long <- melt(
   stats_dt,
@@ -171,11 +160,6 @@ pdf(output_lines_pdf_path, width = 11, height = 7)
 print(p_lines)
 dev.off()
 
-cat("Zapisano wykres linii do:", output_lines_pdf_path, "\n")
-
-# ==============================================================================
-# WYPROWADZENIE LOGIKI JAKOŚCI ESTYMAT (STABILNOŚCI)
-# ==============================================================================
 param_cols <- c(
   "alpha_x_A1_est", "alpha_x_A2_est", "alpha_x_out_est", 
   "beta_x_A1_est", "beta_x_A2_est", "beta_x_out_est", 
@@ -189,9 +173,6 @@ dt[, color_group := cut(min_est_over_se, breaks = c(-Inf, 1, 2, 5, 10, Inf),
 dt[n_valid_params < 8 | is.na(min_est_over_se), color_group := "NA"]
 dt[, color_group := factor(color_group, levels = c("NA", "0", "1", "2", "5", "10"))]
 
-# ==============================================================================
-# DEDYKOWANY MOTYW MATRYCOWY
-# ==============================================================================
 matrix_theme <- function(row_idx, col_idx, total_rows, total_cols) {
   theme_minimal(base_size = 11) + 
     theme(
@@ -207,10 +188,6 @@ matrix_theme <- function(row_idx, col_idx, total_rows, total_cols) {
     )
 }
 
-# ==============================================================================
-# GENEROWANIE WYKRESÓW MATRYCY HISTOGRAMÓW
-# ==============================================================================
-cat("Generuję PDF z matrycą stabilności korelacji GDM... \n")
 gdm_plots <- list()
 
 for (r in seq_along(RHOS)) {
@@ -265,5 +242,3 @@ output_pdf_path <- file.path(
 pdf(output_pdf_path, width = length(N_CELLS) * 2, height = length(RHOS) + 1.5)
 print(combined_gdm)
 dev.off()
-
-cat("Sukces! Wygenerowano plik PDF z matrycą:", output_pdf_path, "\n")

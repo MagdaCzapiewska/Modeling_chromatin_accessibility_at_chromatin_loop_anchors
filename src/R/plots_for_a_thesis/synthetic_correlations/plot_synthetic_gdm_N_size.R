@@ -6,13 +6,13 @@ library(ggtext)
 args <- commandArgs(trailingOnly = TRUE)
 
 if (length(args) < 2) {
-  stop("Błąd: Wymagane są 2 argumenty! Użycie: Rscript script.R <rho> <mu>")
+  stop("Usage: Rscript script.R <rho> <mu>")
 }
 
-CURRENT_RHO <- args[1]  # np. "-0.4"
-CURRENT_MU  <- args[2]  # np. "5000"
+CURRENT_RHO <- args[1]  # e.g. "-0.4"
+CURRENT_MU  <- args[2]  # e.g. "5000"
 
-cat("Uruchamianie dla RHO =", CURRENT_RHO, "| MU =", CURRENT_MU, "\n")
+cat("RHO =", CURRENT_RHO, "| MU =", CURRENT_MU, "\n")
 
 config_path <- file.path("config", "config.yml")
 config <- yaml::yaml.load_file(config_path)
@@ -24,8 +24,8 @@ OUTPUT_BASE_DIR <- file.path(resultsdir, "plots_for_a_thesis", "synthetic_correl
 INIT_VAL        <- "1e-6"
 SELECTED_SEEDS  <- 0:999
 
-N_CELLS <- c(1000, 2000, 5000, 10000, 20000)   # Wiersze (N)
-SIZES   <- c("0.1", "0.2", "0.5", "1.0", "2.0", "inf", "fixed")  # Kolumny (size_nb)
+N_CELLS <- c(1000, 2000, 5000, 10000, 20000)
+SIZES   <- c("0.1", "0.2", "0.5", "1.0", "2.0", "inf", "fixed")
 
 color_map <- c(
   "10" = "#99FF99", 
@@ -45,12 +45,9 @@ legend_labels <- c(
   "NA" = "Not Available / Failed"
 )
 
-# Pomocnicza funkcja do formatowania wartości liczbowych (np. 5,000)
 format_n <- function(x) format(as.numeric(x), big.mark = ",", scientific = FALSE)
 
-# ==============================================================================
-# WCZYTYWANIE DANYCH DLA JEDNEGO PODANEGO RHO
-# ==============================================================================
+
 rho_numeric <- as.numeric(CURRENT_RHO)
 rho_str     <- format(rho_numeric, nsmall = 1)
 search_path <- file.path(INPUT_DIR, paste0("rho_", rho_str), paste0("init_", INIT_VAL))
@@ -59,27 +56,23 @@ files <- file.path(search_path, paste0("cor_seed", SELECTED_SEEDS, ".tsv.gz"))
 existing_files <- files[file.exists(files)]
 
 if (length(existing_files) == 0) {
-  stop(paste("Brak plików dla rho =", rho_str, "w ścieżce:", search_path))
+  stop(paste("No files for rho =", rho_str, "on path:", search_path))
 }
 
-cat("Wczytuję", length(existing_files), "plików z ścieżki:", search_path, "\n")
+cat("Reading", length(existing_files), "files from path:", search_path, "\n")
 dt <- rbindlist(lapply(existing_files, fread))
 
-# Filtrowanie pod parametry z CLI oraz wektory N_CELLS i SIZES
 dt <- dt[as.character(mu) == CURRENT_MU & 
          n %in% N_CELLS & 
          as.character(size_nb) %in% SIZES]
 
-if (nrow(dt) == 0) stop("Brak danych po przefiltrowaniu dla podanych parametrów!")
+if (nrow(dt) == 0) stop("No data adter filtering!")
 
-# Konwersja size_nb na factor z określoną kolejnością poziomów
 dt[, size_nb := factor(as.character(size_nb), levels = SIZES)]
 
 dir.create(OUTPUT_BASE_DIR, recursive = TRUE, showWarnings = FALSE)
 
-# ==============================================================================
-# OBLICZANIE I ZAPIS STATYSTYK DLA KOMBINACJI (N, SIZE)
-# ==============================================================================
+
 stats_dt <- dt[, .(
   n_datasets         = .N,
   mean_spearman_rho  = mean(spearman_rho, na.rm = TRUE),
@@ -95,12 +88,7 @@ output_stats_path <- file.path(
 )
 
 fwrite(stats_dt, output_stats_path, sep = "\t", compress = "gzip")
-cat("Zapisano statystyki do:", output_stats_path, "\n")
 
-# ==============================================================================
-# WYKRES LINII: MEAN, SD ORAZ DISTANCE VS SIZE (DLA KAŻDEGO N)
-# ==============================================================================
-cat("Generuję PDF z liniami statystyk w zależności od size... \n")
 
 stats_long <- melt(
   stats_dt,
@@ -167,11 +155,6 @@ pdf(output_lines_pdf_path, width = 12, height = 5)
 print(p_lines)
 dev.off()
 
-cat("Zapisano wykres linii do:", output_lines_pdf_path, "\n")
-
-# ==============================================================================
-# KLASYFIKACJA STABILNOŚCI ESTYMAT
-# ==============================================================================
 param_cols <- c(
   "alpha_x_A1_est", "alpha_x_A2_est", "alpha_x_out_est", 
   "beta_x_A1_est", "beta_x_A2_est", "beta_x_out_est", 
@@ -185,9 +168,7 @@ dt[, color_group := cut(min_est_over_se, breaks = c(-Inf, 1, 2, 5, 10, Inf),
 dt[n_valid_params < 8 | is.na(min_est_over_se), color_group := "NA"]
 dt[, color_group := factor(color_group, levels = c("NA", "0", "1", "2", "5", "10"))]
 
-# ==============================================================================
-# DEDYKOWANY MOTYW MATRYCOWY
-# ==============================================================================
+
 matrix_theme <- function(row_idx, col_idx, total_rows, total_cols) {
   theme_minimal(base_size = 11) + 
     theme(
@@ -203,10 +184,6 @@ matrix_theme <- function(row_idx, col_idx, total_rows, total_cols) {
     )
 }
 
-# ==============================================================================
-# GENEROWANIE WYKRESÓW MATRYCY HISTOGRAMÓW (N vs SIZE)
-# ==============================================================================
-cat("Generuję PDF z matrycą stabilności korelacji GDM (N vs Size)... \n")
 gdm_plots <- list()
 
 for (r in seq_along(N_CELLS)) {
@@ -258,4 +235,3 @@ pdf(output_pdf_path, width = length(SIZES) * 2, height = length(N_CELLS) + 1.5)
 print(combined_gdm)
 dev.off()
 
-cat("Sukces! Wygenerowano plik matrycy:", output_pdf_path, "\n")

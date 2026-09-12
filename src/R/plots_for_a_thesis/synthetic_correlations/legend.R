@@ -7,10 +7,6 @@ config <- yaml::yaml.load_file(config_path)
 resultsdir <- config$paths$resultsdir
 output_dir <- file.path(resultsdir, "plots_for_a_thesis", "synthetic_correlations")
 
-# ==============================================================================
-# PALETA KOLORÓW I ETYKIETY
-# ==============================================================================
-
 color_map <- c(
   "10" = "#99FF99", 
   "5"  = "#FFFF99", 
@@ -29,25 +25,19 @@ legend_labels <- c(
   "NA" = "Non-available"
 )
 
-# ==============================================================================
-# GENEROWANIE SZTUCZNYCH DANYCH
-# ==============================================================================
 set.seed(42)
 
-# Tworzymy wektor grup dla wszystkich 6 kategorii (w tym "NA") -> 6 * 100 = 600 obserwacji
 groups <- rep(names(color_map), each = 100)
 
 dummy_dt <- data.frame(
   spearman_rho = rnorm(length(groups), mean = 0, sd = 0.3),
   color_group = factor(
     groups, 
-    levels = names(color_map) # POPRAWKA: Używamy wszystkich kluczy z color_map, łącznie z "NA"
+    levels = names(color_map)
   )
 )
 
-# ==============================================================================
-# WYKRES HISTOGRAMU Z LEGENDĄ (POZIOMA)
-# ==============================================================================
+
 p <- ggplot(dummy_dt, aes(x = spearman_rho, fill = color_group)) +
   geom_histogram(binwidth = 0.08, color = "white", linewidth = 0.2, position = "stack") +
   scale_fill_manual(
@@ -57,13 +47,13 @@ p <- ggplot(dummy_dt, aes(x = spearman_rho, fill = color_group)) +
     drop = FALSE
   ) +
   guides(fill = guide_legend(
-    title.position = "top",  # Tytuł nad elementami
-    title.hjust = 0.5,       # Wyśrodkowanie tytułu
-    nrow = 1,                # Wymuszenie 1 wiersza (wszystkie 6 elementów w poziomie)
+    title.position = "top",
+    title.hjust = 0.5,
+    nrow = 1,
     byrow = TRUE
   )) +
   labs(
-    title = "Sztuczny histogram do wycięcia legendy",
+    title = "Synthetic histogram",
     x = "Estimated Spearman's correlation",
     y = "Count"
   ) +
@@ -77,10 +67,8 @@ p <- ggplot(dummy_dt, aes(x = spearman_rho, fill = color_group)) +
     legend.margin = margin(6, 8, 6, 8)
   )
 
-# Zapis do PDF — szerokość 15 cali zapewnia wystarczająco dużo miejsca dla 6 elementów
 output_file <- file.path(output_dir, "histogram_with_legend_with_NA_horizontal.pdf")
 pdf(output_file, width = 15, height = 5)
 print(p)
 dev.off()
 
-cat("Zapisano wykres ze sztucznym histogramem i legendą do:", output_file, "\n")

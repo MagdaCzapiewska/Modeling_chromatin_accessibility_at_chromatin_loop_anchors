@@ -16,7 +16,6 @@ if (!file.exists(input_file)) stop(paste("Input file not found:", input_file))
 dt <- fread(input_file)
 if(!dir.exists(dirname(output_pdf))) dir.create(dirname(output_pdf), recursive = TRUE)
 
-# Szeroki i wysoki layout dający optymalne proporcje dla mniejszej liczby wykresów na stronę
 pdf(output_pdf, width = 22, height = 14)
 
 make_syn_pair <- function(sub_dt, title_str, expected_val) {
@@ -41,9 +40,6 @@ make_syn_pair <- function(sub_dt, title_str, expected_val) {
   return(ps + pp)
 }
 
-# ==============================================================================
-# SEKCJA 1: Wykresy rozbite po N
-# ==============================================================================
 unique_n <- sort(unique(dt$n))
 plots_n <- list()
 
@@ -63,9 +59,6 @@ for (i in seq_along(plot_chunks_n)) {
   print(combined_n)
 }
 
-# ==============================================================================
-# SEKCJA 2: Wykresy rozbite po MU
-# ==============================================================================
 unique_mu <- sort(unique(dt$mu))
 plots_mu <- list()
 
@@ -82,9 +75,6 @@ combined_mu <- wrap_plots(plots_mu, ncol = 2, nrow = 3) +
   )
 print(combined_mu)
 
-# ==============================================================================
-# SEKCJA 3: Wykresy rozbite po SIZE_NEGBINOM (Rozbicie na 2 strony po maks 6 obiektów)
-# ==============================================================================
 #unique_size <- unique(dt$size_nb)
 #numeric_parts <- sort(as.numeric(unique_size[!unique_size %in% c("inf", "fixed")]))
 #ordered_sizes <- c(unique_size[unique_size %in% c("inf", "fixed")], as.character(numeric_parts))
@@ -96,7 +86,6 @@ for (current_size in ordered_sizes) {
   plots_size[[current_size]] <- make_syn_pair(sub_dt, paste0("sizeNB = ", current_size), expected_rho)
 }
 
-# Dzielimy listę 12 modeli na porcje po max 6 modeli (czyli 12 pojedynczych wykresów na stronę w układzie 3x2)
 plot_chunks_size <- split(plots_size, ceiling(seq_along(plots_size) / 6))
 
 for (i in seq_along(plot_chunks_size)) {

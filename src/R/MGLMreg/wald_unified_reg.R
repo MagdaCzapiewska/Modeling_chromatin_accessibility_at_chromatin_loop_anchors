@@ -77,7 +77,7 @@ for (loop_id in loops_of_interest) {
     next
   }
 
-  # Obliczanie statusu dopasowania (fit_status)
+
   grad_mat <- fit_reg@gradient
   is_converged <- !is.null(grad_mat) && (mean(grad_mat^2, na.rm = TRUE) <= 1e-04)
   p_val_time <- get_coef_safe(test_mat, "time", "Pr(>wald)")
@@ -103,14 +103,6 @@ if (length(results_list) > 0) {
   results_dt <- rbindlist(results_list, fill = TRUE)
   alpha_threshold <- 0.05
   
-  # Poprawka BH aplikowana WYŁĄCZNIE dla udanych dopasowań (SUCCESS)
-  #if ("Pr(>wald)" %in% names(results_dt)) {
-  #  results_dt[fit_status == "SUCCESS" & !is.na(`Pr(>wald)`), 
-  #             padj_BH := p.adjust(`Pr(>wald)`, method = "BH"), 
-  #             by = parameter]
-  #  results_dt[, is_significant := !is.na(padj_BH) & padj_BH < alpha_threshold]
-  #}
-  # Poprawka BH aplikowana globalnie dla WSZYSTKICH udanych dopasowań (SUCCESS)
   if ("Pr(>wald)" %in% names(results_dt)) {
     results_dt[fit_status == "SUCCESS" & !is.na(`Pr(>wald)`), 
                padj_BH := p.adjust(`Pr(>wald)`, method = "BH")]

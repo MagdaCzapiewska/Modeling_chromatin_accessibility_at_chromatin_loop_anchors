@@ -19,7 +19,6 @@ log_file        <- args[6]
 
 rho_str <- format(rho_val, nsmall = 1)
 
-# Nowa rozszerzona siatka parametrów
 N_CELLS        <- c(1000, 2000, 5000, 10000, 20000)
 MUS            <- c(1000, 2000, 3000, 4000, 5000)
 SIZE_NEGBINOMS <- c("0.1", "0.2", "0.5", "1.0", "2.0", "inf", "fixed")
@@ -36,7 +35,6 @@ if (!dir.exists(target_out_dir)) {
   dir.create(target_out_dir, recursive = TRUE, showWarnings = FALSE)
 }
 
-# Ścieżka do jednego zbiorczego pliku TSV dla danego ziarna
 input_file <- file.path(synthetic_dir, paste0("rho_", rho_str), paste0("synthetic_counts_seed", seed_val, ".tsv.gz"))
 
 if (!file.exists(input_file)) {
@@ -47,7 +45,6 @@ if (!file.exists(input_file)) {
   stop(paste("Input file missing:", input_file))
 }
 
-# Wczytanie całego pliku dla danego seeda
 all_reads <- fread(input_file)
 setkey(all_reads, n_cells, mu, size_nb)
 
@@ -58,7 +55,6 @@ for (n in N_CELLS) {
       file_tag <- paste0("n", n, "_mu", mu_val, "_sizeNB", size_nb_str, "_alpha", ALPHA, "_beta", BETA, "_seed", seed_val)
       rds_file <- file.path(target_out_dir, paste0("fit_synthetic_", file_tag, ".rds"))
       
-      # Wyciągnięcie konkretnego scenariusza z wygenerowanej ramki
       #reads <- all_reads[n_cells == n & mu == mu & size_nb == size_nb, .(x_A1, x_A2, total_reads)]
       #reads <- all_reads[n_cells == n & mu == ..mu_val & size_nb == ..size_nb_str, .(x_A1, x_A2, total_reads)]
       reads <- all_reads[.(n, mu_val, size_nb_str), .(x_A1, x_A2, total_reads), nomatch = NULL]

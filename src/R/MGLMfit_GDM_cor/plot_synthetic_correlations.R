@@ -40,7 +40,6 @@ process_data <- function(dt) {
   return(dt)
 }
 
-# --- Główny Nurt Wykonawczy ---
 
 if (!file.exists(input_file)) {
   stop(paste("Input file not found:", input_file))
@@ -51,12 +50,10 @@ dt <- process_data(dt)
 
 if(!dir.exists(dirname(output_pdf))) dir.create(dirname(output_pdf), recursive = TRUE)
 
-# Otwieramy jeden wielostronicowy plik PDF (szerokość dostosowana do 5 kolumn w sekcji size_nb)
+
 pdf(output_pdf, width = 20, height = 12)
 
-# ==============================================================================
-# SEKCJA 1: Wykresy rozbite po N (Liczba komórek) - Strony 1-3
-# ==============================================================================
+
 unique_n <- sort(unique(dt$n))
 plots_n <- list()
 
@@ -98,12 +95,10 @@ for (i in seq_along(plot_chunks)) {
   print(combined_n)
 }
 
-# ==============================================================================
-# SEKCJA 2: Wykresy rozbite po MU (Głębokość sekwencjonowania) - Strony 4-5
-# ==============================================================================
+
 unique_mu <- sort(unique(dt$mu))
 
-# --- Strona 4: Wszystkie modele dla MU ---
+
 plots_mu_all <- list()
 for (current_mu in unique_mu) {
   sub_dt <- dt[mu == current_mu]
@@ -137,7 +132,7 @@ combined_mu_all <- wrap_plots(plots_mu_all, ncol = 3, nrow = 2) +
   )
 print(combined_mu_all)
 
-# --- Strona 5: Tylko modele stabilne (>= 5) dla MU ---
+
 plots_mu_filtered <- list()
 dt_stable <- dt[as.numeric(as.character(color_group)) >= 5 & !is.na(as.numeric(as.character(color_group)))]
 
@@ -178,20 +173,12 @@ combined_mu_filtered <- wrap_plots(plots_mu_filtered, ncol = 3, nrow = 2) +
 print(combined_mu_filtered)
 
 
-# ==============================================================================
-# SEKCJA 3: Wykresy rozbite po SIZE_NEGBINOM (Stopień dyspersji szumu) - Strony 6-7
-# ==============================================================================
-# Sortujemy tekstowo lub numerycznie, zachowując kolejność unikalnych wystąpień
-# ==============================================================================
-# SEKCJA 3: Wykresy rozbite po SIZE_NEGBINOM (Układ 4 wiersze x 3 kolumny) - Strony 6-7
-# ==============================================================================
 #unique_size <- unique(dt$size_nb)
 #numeric_parts <- sort(as.numeric(unique_size[!unique_size %in% c("inf", "fixed")]))
 #ordered_sizes <- c(unique_size[unique_size %in% c("inf", "fixed")], as.character(numeric_parts))
 
 ordered_sizes <- c("inf", "fixed", "0.5", "1.0", "1.5", "2.0", "2.5", "3.0", "3.5", "10")
 
-# --- Strona 6: Wszystkie modele dla Size NB ---
 plots_size_all <- list()
 for (current_size in ordered_sizes) {
   sub_dt <- dt[size_nb == current_size]
@@ -216,7 +203,6 @@ for (current_size in ordered_sizes) {
   plots_size_all[[current_size]] <- p
 }
 
-# ZMIANA: Zmiana układu na ncol = 3, nrow = 4 dla lepszej proporcji i szerokości osi
 combined_size_all <- wrap_plots(plots_size_all, ncol = 3, nrow = 4) + 
   plot_layout(guides = "collect") + 
   plot_annotation(
@@ -226,7 +212,6 @@ combined_size_all <- wrap_plots(plots_size_all, ncol = 3, nrow = 4) +
   )
 print(combined_size_all)
 
-# --- Strona 7: Tylko modele stabilne (>= 5) dla Size NB ---
 plots_size_filtered <- list()
 for (current_size in ordered_sizes) {
   sub_dt <- dt_stable[size_nb == current_size]
@@ -255,7 +240,6 @@ for (current_size in ordered_sizes) {
   plots_size_filtered[[current_size]] <- p
 }
 
-# ZMIANA: Zmiana układu na ncol = 3, nrow = 4 również dla danych przefiltrowanych
 combined_size_filtered <- wrap_plots(plots_size_filtered, ncol = 3, nrow = 4) + 
   plot_layout(guides = "collect") + 
   plot_annotation(

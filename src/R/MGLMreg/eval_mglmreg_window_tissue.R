@@ -12,9 +12,9 @@ init_type   <- if (length(args) >= 3) args[3] else "default"
 fit_init_type <- "1e-6"
 
 message("==================================================")
-message(sprintf("Start przetwarzania okna czasowego: %s (10h+ tissue)", tw))
-message(sprintf("Typ inicjalizacji: %s", init_type))
-message(sprintf("Plik docelowy: %s", output_file))
+message(sprintf("Time window: %s (10h+ tissue)", tw))
+message(sprintf("Init type: %s", init_type))
+message(sprintf("Output file: %s", output_file))
 message("==================================================")
 
 time_set   <- "10h+"
@@ -26,7 +26,7 @@ config      <- yaml::yaml.load_file(config_path)
 resultsdir <- config$paths$resultsdir
 srcdir     <- config$paths$srcdir
 
-# Ładowanie lokalnego pakietu MGLM
+
 pkg_path <- file.path(srcdir, "MGLM")
 if (dir.exists(pkg_path)) {
   r_files <- list.files(file.path(pkg_path, "R"), pattern = "\\.R$", full.names = TRUE)
@@ -35,7 +35,7 @@ if (dir.exists(pkg_path)) {
 
 tw_bounds <- as.numeric(strsplit(tw, "-")[[1]])
 mid_time  <- mean(tw_bounds)
-message(sprintf("Środkowy punkt czasowy (mid_time): %.2f h", mid_time))
+message(sprintf("Mid time point (mid_time): %.2f h", mid_time))
 
 get_coef_safe <- function(mat, row_name, col_name) {
   if (is.null(mat) || (!is.matrix(mat) && !is.data.frame(mat))) {
@@ -76,10 +76,9 @@ sim_gdm_rho <- function(sorted_names, alpha_vec, beta_vec, n_sim = 10000) {
   return(list(rho = as.numeric(ct$estimate), pval = ct$p.value))
 }
 
-# Plik korelacji dla poszczególnych populacji
 fit_cor_file <- file.path(resultsdir, "MGLMfit_GDM_cor", "real_data", "pops", paste0("init_", fit_init_type), paste0("cor_", tw, ".tsv.gz"))
 if (!file.exists(fit_cor_file)) {
-  stop("Nie znaleziono pliku MGLMfit cor populacji: ", fit_cor_file)
+  stop("File not found: ", fit_cor_file)
 }
 
 dt_fit <- fread(fit_cor_file)
@@ -102,7 +101,7 @@ setnames(dt_res,
          skip_absent = TRUE)
 
 reg_dir <- file.path(resultsdir, "MGLMreg", sprintf("GDM_%s_%s_%s", time_set, model_type, init_type))
-message(sprintf("Katalog z plikami RDS MGLMreg: %s", reg_dir))
+message(sprintf("Directory with files RDS MGLMreg: %s", reg_dir))
 
 dt_res[, `:=`(
   tissue              = NA_character_,
@@ -114,12 +113,12 @@ dt_res[, `:=`(
   reg_spearman_rho    = NA_real_, reg_spearman_pvalue = NA_real_
 )]
 
-# Ustalenie nazwy tkanki dokładnie tak jak w GDM_unified_reg.R (sub("^[^_]+_", "", population))
+
 dt_res[, tissue := sub("^[^_]+_", "", population)]
 
 unique_loops <- unique(dt_res$loop_id)
 n_loops      <- length(unique_loops)
-message(sprintf("Liczba unikalnych pętli do przetworzenia: %d (łączna liczba wierszy: %d)", n_loops, nrow(dt_res)))
+message(sprintf("Unique loops: %d (number of rows: %d)", n_loops, nrow(dt_res)))
 
 for (l_idx in seq_along(unique_loops)) {
   loop    <- unique_loops[l_idx]
@@ -128,7 +127,7 @@ for (l_idx in seq_along(unique_loops)) {
   if (verbose) {
     message(sprintf("\n--- [DEBUG LOOP %d/%d] ID: %s ---", l_idx, n_loops, loop))
   } else if (l_idx %% 50 == 0) {
-    message(sprintf("[%s] Okno: %s | Pętla [%d/%d]: %s", format(Sys.time(), "%H:%M:%S"), tw, l_idx, n_loops, loop))
+    message(sprintf("[%s] Time window: %s | Loop [%d/%d]: %s", format(Sys.time(), "%H:%M:%S"), tw, l_idx, n_loops, loop))
   }
   flush.console()
   
@@ -137,7 +136,7 @@ for (l_idx in seq_along(unique_loops)) {
   
   if (!file.exists(reg_file)) {
     dt_res[row_indices, reg_status := "NO_MODEL_FILE"]
-    if (verbose) message("  [!] Status: NO_MODEL_FILE (brak pliku)")
+    if (verbose) message("  [!] Status: NO_MODEL_FILE (no file)")
     next
   }
   
@@ -145,7 +144,7 @@ for (l_idx in seq_along(unique_loops)) {
   
   if (is.null(fit_reg) || !inherits(fit_reg, "MGLMreg")) {
     dt_res[row_indices, reg_status := "NO_MODEL_FILE"]
-    if (verbose) message("  [!] Status: NO_MODEL_FILE (błąd odczytu RDS / obiekt NULL)")
+    if (verbose) message("  [!] Status: NO_MODEL_FILE (error reading RDS / object NULL)")
     next
   }
   
@@ -225,7 +224,6 @@ for (l_idx in seq_along(unique_loops)) {
       reg_alpha_x_out_est = reg_alphas[["x_out"]], reg_beta_x_out_est = reg_betas[["x_out"]]
     )]
     
-    # Budowanie macierzy dla funkcji predict()
     x_vec <- numeric(length(coef_rows))
     names(x_vec) <- coef_rows
     if ("(Intercept)" %in% names(x_vec))   x_vec["(Intercept)"] <- 1
@@ -235,7 +233,7 @@ for (l_idx in seq_along(unique_loops)) {
     newdata_mat <- matrix(x_vec, nrow = 1)
     
     pred_prob <- tryCatch(predict(fit_reg, newdata = newdata_mat), error = function(e) {
-      if (verbose) message(sprintf("  [!] BŁĄD W predict(): %s", e$message))
+      if (verbose) message(sprintf("  [!] Error in predict(): %s", e$message))
       return(NULL)
     })
     
@@ -277,4 +275,4 @@ if (!dir.exists(out_dir)) {
 }
 
 fwrite(dt_res, output_file, sep = "\t", compress = "gzip")
-message(sprintf("Zakończono! Zapisano wyniki do: %s", output_file))
+message(sprintf("Output saved into: %s", output_file))

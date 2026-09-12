@@ -6,14 +6,11 @@ library(ggplot2)
 library(viridis)
 library(yaml)
 
-##########################################################
-# 1. PARSOWANIE ARGUMENTÓW WEJŚCIOWYCH
-##########################################################
 
 args <- commandArgs(trailingOnly = TRUE)
 
 if (length(args) < 4) {
-  stop("Użycie: Rscript plot_thesis_triangles.R <loop_id> <mode: fit|reg> <log: linear|log2> <scale_mode: global|local>")
+  stop("Usage: Rscript plot_thesis_triangles.R <loop_id> <mode: fit|reg> <log: linear|log2> <scale_mode: global|local>")
 }
 
 loop_id_arg <- as.character(args[1])
@@ -22,26 +19,24 @@ log_arg     <- tolower(args[3])
 scale_mode  <- tolower(args[4])
 
 if (!mode_type %in% c("fit", "reg")) {
-  stop("Parametr 'mode' musi przyjmować wartość 'fit' lub 'reg'.")
+  stop("Parameter 'mode' should be 'fit' or 'reg'.")
 }
 
 use_log2 <- log_arg %in% c("log2", "log", "true", "t", "1")
 scale_label <- if (use_log2) "log2" else "linear"
 
 if (!scale_mode %in% c("global", "local")) {
-  stop("Parametr 'scale_mode' musi przyjmować wartość 'global' lub 'local'.")
+  stop("Parameter 'scale_mode' should be 'global' or 'local'.")
 }
 
-cat(sprintf("Generowanie pojedynczych plików PDF: Loop = %s | Tryb = %s | Skala = %s | Tryb skali = %s\n",
+cat(sprintf("Generating PDFs: Loop = %s | Mode = %s | Scale = %s | Scale mode = %s\n",
             loop_id_arg, mode_type, scale_label, scale_mode))
 
-##########################################################
-# 2. KONFIGURACJA I ŚCIEŻKI
 ##########################################################
 
 config_path <- file.path("config", "config.yml")
 if (!file.exists(config_path)) {
-  stop("Nie znaleziono pliku konfiguracji: ", config_path)
+  stop("File not found: ", config_path)
 }
 config <- yaml::yaml.load_file(config_path)
 resultsdir <- config$paths$resultsdir
@@ -58,8 +53,6 @@ time_windows <- c("00-02", "02-04", "04-06", "06-08", "08-10",
 prefix <- paste0(mode_type, "_")
 grid_res <- 150
 
-##########################################################
-# 3. FUNKCJA ANALITYCZNEJ GĘSTOŚCI GDM3
 ##########################################################
 
 dgdm3 <- function(x1, x2, x3, alpha, beta, log = FALSE, log_base = 2) {
@@ -90,8 +83,6 @@ dgdm3 <- function(x1, x2, x3, alpha, beta, log = FALSE, log_base = 2) {
 }
 
 ##########################################################
-# 4. KROK 1: PRZYGOTOWANIE DANYCH I WYZNACZENIE SKALI GLOBALNEJ
-##########################################################
 
 plot_data_list <- list()
 global_min_density <- Inf
@@ -103,7 +94,7 @@ for (tw in time_windows) {
   eval_file <- file.path(eval_dir, paste0("eval_cor_", tw, ".tsv.gz"))
   
   if (!file.exists(eval_file)) {
-    cat(sprintf("Pominięto okno %s (brak pliku eval)\n", tw))
+    cat(sprintf("Skipped window %s (no eval file eval)\n", tw))
     next
   }
   
@@ -112,7 +103,7 @@ for (tw in time_windows) {
   row_dt <- dt_eval[loop_id == loop_id_arg]
   
   if (nrow(row_dt) == 0) {
-    cat(sprintf("Brak danych dla loop_id=%s w oknie %s\n", loop_id_arg, tw))
+    cat(sprintf("No data for loop_id=%s in time window %s\n", loop_id_arg, tw))
     next
   }
   
@@ -213,11 +204,9 @@ for (tw in time_windows) {
 }
 
 if (length(plot_data_list) == 0) {
-  stop("Brak danych do wygenerowania wykresów.")
+  stop("No data for plots.")
 }
 
-##########################################################
-# 5. KROK 2: GENEROWANIE I ZAPIS OSOBNYCH PLIKÓW PDF
 ##########################################################
 
 page_idx <- 1
@@ -269,7 +258,6 @@ for (tw in names(plot_data_list)) {
     theme_bw() +
     theme_showarrows() +
     theme(
-      # Zmniejszone paddingi wokół trójkąta i osi:
       tern.panel.expand = 0.30,
       tern.axis.arrow.sep = 0.20,
       tern.axis.text = element_text(size = 15, color = "black"),
@@ -277,7 +265,6 @@ for (tw in names(plot_data_list)) {
       legend.position = "bottom",
       legend.title = element_text(size = 16, face = "bold"),
       legend.margin = margin(t = -10),
-      # Dociągnięcie tytułu do trójkąta poprzez ujemny dolny margines:
       plot.title = element_text(
         hjust = 0.5, 
         size = 18, 
@@ -298,4 +285,4 @@ for (tw in names(plot_data_list)) {
   page_idx <- page_idx + 1
 }
 
-cat(sprintf("Zapisano %d indywidualnych plików PDF z ciasnym układem w folderze:\n%s\n", length(plot_data_list), out_dir))
+cat(sprintf("Saved %d individual PDF files in folder:\n%s\n", length(plot_data_list), out_dir))

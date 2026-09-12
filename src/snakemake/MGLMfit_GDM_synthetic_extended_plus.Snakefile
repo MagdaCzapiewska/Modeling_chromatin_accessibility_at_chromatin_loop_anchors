@@ -8,7 +8,7 @@ MGLM_BASE = os.path.join(RESULTSDIR, "MGLMfit_GDM", "synthetic_data_extended_plu
 FIT_RSCRIPT = os.path.join(config['paths']['Rsrcdir'], "MGLMfit_GDM_extended_plus.R")
 
 RHOS = [-0.6, -0.4, -0.2, 0.0, 0.2, 0.4, 0.6]
-SEEDS = list(range(100,1000))
+SEEDS = list(range(1000))
 INITS = ["1e-6"]
 
 rule all:

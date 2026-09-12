@@ -55,7 +55,6 @@ for (target_anchor in c("A1", "A2")) {
     dt <- fread(file_path)[population == "all" & anchor == target_anchor]
     if (nrow(dt) == 0 || is.na(dt$alpha_prior) || is.na(dt$beta_prior)) next
     
-    # Bezpieczne nazewnictwo zmiennych (unikanie konfliktu z funkcją beta() w R)
     current_alpha <- dt$alpha_prior
     current_beta  <- dt$beta_prior
     
@@ -118,7 +117,6 @@ for (tw in time_windows) {
       row <- dt_anchor[i]
       if (is.na(row$alpha_prior) || is.na(row$beta_prior)) next
       
-      # Zabezpieczenie nazw i obliczenia mu/nu dla subpopulacji
       sub_alpha <- row$alpha_prior
       sub_beta  <- row$beta_prior
       
@@ -127,7 +125,6 @@ for (tw in time_windows) {
       
       y_vals_sub <- dbeta(x_seq, shape1 = sub_alpha, shape2 = sub_beta)
       
-      # Dodano spację przed nawiasem dla estetyki legendy i ułatwienia grepl
       lbl <- paste0(row$population, " (a=", round(sub_alpha, 2), ", b=", round(sub_beta, 2), "\nm=", round(mu_pop, 6), ", n=", round(nu_pop, 1), ")\n")
       plot_data_tw[[row$population]] <- data.frame(x = x_seq, y = y_vals_sub, pop = row$population, legend_lbl = lbl)
     }
@@ -137,7 +134,6 @@ for (tw in time_windows) {
     df_tw <- bind_rows(plot_data_tw)
     df_tw$line_weight <- ifelse(df_tw$pop == "all", "all_group", "subgroup")
     
-    # --- DYNAMICZNE BUDOWANIE PALETY KOLORÓW Z CZARNYM 'ALL' ---
     unique_lbls <- unique(df_tw$legend_lbl)
     
     num_subgroups <- length(unique_lbls) - 1
@@ -147,9 +143,8 @@ for (tw in time_windows) {
     subgroup_idx <- 1
     
     for (lbl in unique_lbls) {
-      # Sprawdzenie poprawnego wzorca "all (" ze spacją
       if (grepl("^all \\(", lbl)) {
-        custom_colors[lbl] <- "#000000" # Wymuszony czarny dla populacji globalnej
+        custom_colors[lbl] <- "#000000"
       } else {
         custom_colors[lbl] <- subgroup_colors[subgroup_idx]
         subgroup_idx <- subgroup_idx + 1

@@ -10,11 +10,10 @@ tw          <- args[1]
 output_file <- args[2]
 
 message("==================================================")
-message(sprintf("Start przetwarzania okna czasowego: %s", tw))
-message(sprintf("Plik docelowy: %s", output_file))
+message(sprintf("Time window: %s", tw))
+message(sprintf("Output file: %s", output_file))
 message("==================================================")
 
-# Sztywno ustawione warianty
 time_set   <- "0h+"
 model_type <- "time"
 init_type  <- "default"
@@ -25,19 +24,16 @@ config      <- yaml::yaml.load_file(config_path)
 resultsdir <- config$paths$resultsdir
 srcdir     <- config$paths$srcdir
 
-# Ładowanie pakietu MGLM ze źródeł lokalnych (jeśli istnieją)
 pkg_path <- file.path(srcdir, "MGLM")
 if (dir.exists(pkg_path)) {
   r_files <- list.files(file.path(pkg_path, "R"), pattern = "\\.R$", full.names = TRUE)
   for (f in r_files) source(f)
 }
 
-# Obliczenie środkowego punktu czasowego (mid_time) dla danego okna
 tw_bounds <- as.numeric(strsplit(tw, "-")[[1]])
 mid_time  <- mean(tw_bounds)
-message(sprintf("Środkowy punkt czasowy (mid_time): %.2f h", mid_time))
+message(sprintf("Mid time point (mid_time): %.2f h", mid_time))
 
-# Bezpieczne wyciąganie wartości z macierzy/tabeli testowej
 get_coef_safe <- function(mat, row_name, col_name) {
   if (is.null(mat) || (!is.matrix(mat) && !is.data.frame(mat))) {
     return(NA_real_)
@@ -46,7 +42,7 @@ get_coef_safe <- function(mat, row_name, col_name) {
     val <- mat[row_name, col_name]
     if (length(val) == 1 && !is.na(val)) return(as.numeric(val))
   }
-  # Dopasowanie elastyczne (np. brak wielkości liter)
+
   r_idx <- which(rownames(mat) == row_name)
   if (length(r_idx) > 0) {
     c_idx <- grep(col_name, colnames(mat), ignore.case = TRUE)
@@ -58,17 +54,14 @@ get_coef_safe <- function(mat, row_name, col_name) {
   return(NA_real_)
 }
 
-# Funkcja do generowania korelacji ze zmapowanych parametrów GDM
+
 sim_gdm_rho <- function(sorted_names, alpha_vec, beta_vec, n_sim = 10000) {
   if (any(is.na(alpha_vec)) || any(is.na(beta_vec)) || any(alpha_vec <= 0) || any(beta_vec <= 0)) {
     return(list(rho = NA_real_, pval = NA_real_))
   }
   
-  # Krok 1: zawsze x_out
   p1 <- rbeta(n_sim, alpha_vec[1], beta_vec[1])
-  # Krok 2: druga kategoria w kaskadzie (x_A1 lub x_A2)
   p2 <- rbeta(n_sim, alpha_vec[2], beta_vec[2]) * (1 - p1)
-  # Krok 3: resztkowa kategoria bazowa
   p3 <- pmax(0, 1 - p1 - p2)
   
   dt_sim <- data.table(p1, p2, p3)
@@ -82,10 +75,9 @@ sim_gdm_rho <- function(sorted_names, alpha_vec, beta_vec, n_sim = 10000) {
   return(list(rho = as.numeric(ct$estimate), pval = ct$p.value))
 }
 
-# Wczytanie wyników MGLMfit
 fit_cor_file <- file.path(resultsdir, "MGLMfit_GDM_cor", "real_data", "all", "init_1e-6", paste0("cor_", tw, ".tsv.gz"))
 if (!file.exists(fit_cor_file)) {
-  stop("Nie znaleziono pliku MGLMfit cor: ", fit_cor_file)
+  stop("File not found: ", fit_cor_file)
 }
 
 dt_fit <- fread(fit_cor_file)
@@ -127,32 +119,29 @@ for (i in seq_len(n_rows)) {
   if (verbose) {
     message(sprintf("\n--- [DEBUG LOOP %d/%d] ID: %s ---", i, n_rows, loop))
   } else if (i %% 100 == 0) {
-    message(sprintf("[%s] Okno: %s | Pętla [%d/%d]: %s", format(Sys.time(), "%H:%M:%S"), tw, i, n_rows, loop))
+    message(sprintf("[%s] Time window: %s | Loop [%d/%d]: %s", format(Sys.time(), "%H:%M:%S"), tw, i, n_rows, loop))
   }
   flush.console()
   
   reg_file <- file.path(reg_dir, paste0("fit_reg_", loop, ".rds"))
   
-  # Brak pliku modelowego
   if (!file.exists(reg_file)) {
     dt_res[i, reg_status := "NO_MODEL_FILE"]
-    if (verbose) message("  [!] Status: NO_MODEL_FILE (brak pliku)")
+    if (verbose) message("  [!] Status: NO_MODEL_FILE (no file)")
     next
   }
   
   fit_reg <- tryCatch(readRDS(reg_file), error = function(e) NULL)
   
-  # Brak poprawnego obiektu po odczycie
   if (is.null(fit_reg) || !inherits(fit_reg, "MGLMreg")) {
     dt_res[i, reg_status := "NO_MODEL_FILE"]
-    if (verbose) message("  [!] Status: NO_MODEL_FILE (błąd odczytu RDS / obiekt NULL)")
+    if (verbose) message("  [!] Status: NO_MODEL_FILE (error reading RDS / object NULL)")
     next
   }
   
   test_mat <- fit_reg@test
   grad_mat <- fit_reg@gradient
   
-  # Obliczenie wskaźników zbieżności i testów Walda
   if (is.null(grad_mat)) {
     is_converged <- FALSE
   } else {
@@ -177,13 +166,10 @@ for (i in seq_len(n_rows)) {
                     fit_status, is_converged, p_val_time))
   }
   
-  # Jeśli model nie odniósł sukcesu, pomijamy wyliczanie wartości
-  #if (fit_status != "SUCCESS") next
   
   coef_mat <- fit_reg@coefficients
   if (is.null(coef_mat)) next
   
-  # Ustawienie nazw wierszy z test_mat
   if (!is.null(test_mat) && !is.null(rownames(test_mat))) {
     rownames(coef_mat) <- rownames(test_mat)
   }
@@ -194,7 +180,7 @@ for (i in seq_len(n_rows)) {
   reg_alphas <- list()
   reg_betas  <- list()
   
-  # Wyznaczenie estymat parametrów w czasie mid_time: exp(intercept + time * mid_time)
+
   for (cat_name in c("x_out", "x_A2", "x_A1")) {
     col_a <- paste0("alpha_", cat_name)
     col_b <- paste0("beta_", cat_name)
@@ -220,7 +206,7 @@ for (i in seq_len(n_rows)) {
     reg_alpha_x_out_est = reg_alphas[["x_out"]], reg_beta_x_out_est = reg_betas[["x_out"]]
   )]
   
-  # Predict – macierz numeryczna z odpowiednimi wymiarami
+
   if (!is.null(coef_rows) && "(Intercept)" %in% coef_rows && "time" %in% coef_rows) {
     newdata_mat <- matrix(c(1, mid_time), nrow = 1)
   } else {
@@ -228,7 +214,7 @@ for (i in seq_len(n_rows)) {
   }
   
   pred_prob <- tryCatch(predict(fit_reg, newdata = newdata_mat), error = function(e) {
-    if (verbose) message(sprintf("  [!] BŁĄD W predict(): %s", e$message))
+    if (verbose) message(sprintf("  [!] Error in predict(): %s", e$message))
     return(NULL)
   })
   
@@ -238,7 +224,7 @@ for (i in seq_len(n_rows)) {
     if ("x_out" %in% colnames(pred_prob)) dt_res[i, reg_pred_p_x_out := pred_prob[1, "x_out"]]
   }
   
-  # Wyznaczenie porządku kaskady GDM z gwarancją x_out na 1. pozycji
+
   alpha_cols <- grep("^alpha_", coef_cols, value = TRUE)
   step_cats  <- sub("^alpha_", "", alpha_cols)
   
@@ -270,4 +256,4 @@ if (!dir.exists(out_dir)) {
 }
 
 fwrite(dt_res, output_file, sep = "\t", compress = "gzip")
-message(sprintf("Zakończono! Zapisano wyniki do: %s", output_file))
+message(sprintf("Output saved to: %s", output_file))

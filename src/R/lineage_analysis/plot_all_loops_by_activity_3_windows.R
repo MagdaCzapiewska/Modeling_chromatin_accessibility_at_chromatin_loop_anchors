@@ -2,7 +2,6 @@ library(data.table)
 library(ggplot2)
 library(stringr)
 
-# 1. Konfiguracja ścieżek
 config <- yaml::yaml.load_file(file.path("config", "config.yml"))
 datadir <- config$paths$datadir
 resultsdir <- config$paths$resultsdir
@@ -14,11 +13,8 @@ root_to_leaf_paths <- file.path(resultsdir, "lineage_analysis", "root_to_leaf_pa
 output_file <- file.path(resultsdir, "lineage_analysis", "correlation_by_lineage_with_union_activity_3_windows.pdf")
 correlation_dir <- file.path(resultsdir, "MGLMfit_GDM_cor", "real_data", "pops", "init_1e-6")
 
-# Skupiamy się TYLKO na tych trzech oknach
 time_windows <- c("06-08", "10-12", "14-16")
 
-# 2. Agregacja aktywności (Union: pętla aktywna, jeśli działa w jakiejkolwiek z 3 tkanek)
-# Tworzymy mapowanie dla każdego okna czasowego
 act_06_08 <- loops_data[, .(
   loop_id, 
   time_window = "06-08", 
@@ -37,10 +33,8 @@ act_14_16 <- loops_data[, .(
   is_active = as.integer((`Dmel_14-16h_Neuroblasts` == 1) | (`Dmel_14-16h_Neurons` == 1) | (`Dmel_14-16h_Glia` == 1))
 )]
 
-# Łączymy w jedną tabelę (format "long")
 activity_map <- rbindlist(list(act_06_08, act_10_12, act_14_16))
 
-# 3. Wczytywanie danych korelacji TYLKO dla wybranych okien
 cor_list <- list()
 for (tw in time_windows) {
   file_path <- file.path(correlation_dir, paste0("cor_", tw, ".tsv.gz"))
@@ -48,12 +42,11 @@ for (tw in time_windows) {
     dt <- fread(file_path)
     cor_list[[tw]] <- dt
   } else {
-    warning(paste("Plik nie istnieje:", file_path))
+    warning(paste("File not exists:", file_path))
   }
 }
 all_cor <- rbindlist(cor_list)
 
-# Filtrowanie i dołączanie statusu aktywności
 all_cor <- all_cor[loop_id %in% loops_data$loop_id]
 all_cor <- all_cor[min_est_over_se >= 5]
 all_cor <- merge(all_cor, activity_map, by = c("loop_id", "time_window"), all.x = TRUE)
@@ -61,14 +54,12 @@ all_cor <- merge(all_cor, activity_map, by = c("loop_id", "time_window"), all.x 
 global_y_min <- min(all_cor$spearman_rho, na.rm = TRUE)
 global_y_max <- max(all_cor$spearman_rho, na.rm = TRUE)
 
-# 4. Wczytanie ścieżek
 paths <- readLines(root_to_leaf_paths)
 paths <- paths[paths != ""]
 
 template_dt <- data.table(time_window = time_windows, x_base = 1:3)
 
-# 5. Rysowanie wykresów do PDF
-pdf(output_file, width = 10, height = 7) # Proporcje dopasowane do 3 okien na osi X
+pdf(output_file, width = 10, height = 7)
 
 for (p_idx in seq_along(paths)) {
   path_str <- paths[p_idx]
@@ -82,7 +73,6 @@ for (p_idx in seq_along(paths)) {
   })
   path_dt <- rbindlist(path_list)
   
-  # Filtrujemy ścieżkę, by zostawić tylko interesujące nas okna czasowe
   path_dt <- path_dt[time_window %in% time_windows]
   
   cor_path <- merge(path_dt, all_cor, by = c("time_window", "population"), all.x = TRUE)
@@ -90,7 +80,7 @@ for (p_idx in seq_along(paths)) {
   plot_data <- copy(cor_path)
   plot_data[, split_var := factor(is_active, levels = c("0", "1"))]
   
-  # Obliczanie N dla 0 i 1
+
   counts_split <- plot_data[!is.na(spearman_rho), .(n = .N), by = .(time_window, split_var)]
   counts_wide <- dcast(counts_split, time_window ~ split_var, value.var = "n", fill = 0, drop = FALSE)
   
@@ -148,4 +138,3 @@ for (p_idx in seq_along(paths)) {
 }
 
 dev.off()
-cat("Sukces! Wygenerowano zagregowany plik PDF pod adresem:\n", output_file, "\n")

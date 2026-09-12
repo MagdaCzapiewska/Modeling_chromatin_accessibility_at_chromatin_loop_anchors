@@ -2,21 +2,17 @@ library(data.table)
 library(ggplot2)
 library(patchwork)
 
-# ==============================================================================
-# CONFIGURATION - USTAWIENIA POD PLAKAT
-# ==============================================================================
 INPUT_DIR        <- "./results/MGLMfit_GDM_cor/synthetic_data_extended"
 OUTPUT_BASE_DIR <- "." 
 CURRENT_MU      <- 5000
-CURRENT_SIZE    <- "1.0"      # Blokujemy parametry zgodnie z opisem
+CURRENT_SIZE    <- "1.0"
 INIT_VAL        <- "1e-6"
 SELECTED_SEEDS  <- 0:999
 
-# Geometria matrycy na plakat
 RHOS    <- c(-0.6, 0.0, 0.6)
 N_CELLS <- c(1000, 2000, 5000, 10000, 20000)
 
-# Twoja oryginalna mapa kolorów stabilności estymat
+
 color_map <- c(
   "10" = "#99FF99", 
   "5"  = "#FFFF99", 
@@ -26,7 +22,7 @@ color_map <- c(
   "NA" = "#D3D3D3"
 )
 
-# --- POPRAWKA: Czytelne etykiety do legendy jakości/stabilności ---
+
 legend_labels <- c(
   "10" = "Excellent (min EST/SE >= 10)",
   "5"  = "Good (min EST/SE >= 5)",
@@ -36,9 +32,7 @@ legend_labels <- c(
   "NA" = "Not Available / Failed"
 )
 
-# ==============================================================================
-# WCZYTYWANIE I AGREGACJA DANYCH Z TRZECH KATALOGÓW RHO
-# ==============================================================================
+
 all_data_list <- list()
 
 for (r_val in RHOS) {
@@ -49,23 +43,21 @@ for (r_val in RHOS) {
   existing_files <- files[file.exists(files)]
   
   if (length(existing_files) > 0) {
-    cat("Wczytuję", length(existing_files), "plików dla rho =", rho_str, "\n")
+    cat("Reading", length(existing_files), "files for rho =", rho_str, "\n")
     dt_rho <- rbindlist(lapply(existing_files, fread))
     all_data_list[[as.character(r_val)]] <- dt_rho
   } else {
-    warning(paste("Brak plików dla rho =", rho_str, "w ścieżce:", search_path))
+    warning(paste("No files for rho =", rho_str, "on path:", search_path))
   }
 }
 
-if (length(all_data_list) == 0) stop("Nie wczytano żadnych danych! Sprawdź ścieżki.")
+if (length(all_data_list) == 0) stop("No data read. Check paths.")
 dt <- rbindlist(all_data_list)
 
-# Filtrowanie pod stałe parametry
+
 dt <- dt[mu == CURRENT_MU & size_nb == CURRENT_SIZE]
 
-# ==============================================================================
-# WYPROWADZENIE TWOJEJ LOGIKI JAKOŚCI ESTYMAT (STABILNOŚCI)
-# ==============================================================================
+
 param_cols <- c(
   "alpha_x_A1_est", "alpha_x_A2_est", "alpha_x_out_est", 
   "beta_x_A1_est", "beta_x_A2_est", "beta_x_out_est", 
@@ -81,9 +73,7 @@ dt[, color_group := factor(color_group, levels = c("NA", "0", "1", "2", "5", "10
 
 dir.create(OUTPUT_BASE_DIR, recursive = TRUE, showWarnings = FALSE)
 
-# ==============================================================================
-# DEDYKOWANY MOTYW MATRYCOWY (Odstępy w poziomie pod osie)
-# ==============================================================================
+
 matrix_theme <- function(row_idx, col_idx, total_rows, total_cols) {
   theme_minimal(base_size = 11) + 
     theme(
@@ -99,10 +89,8 @@ matrix_theme <- function(row_idx, col_idx, total_rows, total_cols) {
     )
 }
 
-# ==============================================================================
-# GENEROWANIE WYKRESÓW
-# ==============================================================================
-cat("Generuję PDF z matrycą stabilności korelacji GDM... \n")
+
+cat("Generating PDF... \n")
 gdm_plots <- list()
 
 for (r in seq_along(RHOS)) {
@@ -132,7 +120,7 @@ for (r in seq_along(RHOS)) {
   }
 }
 
-# Składanie wszystkiego w jeden czysty panel (bez zbierania legendy)
+
 combined_gdm <- wrap_plots(gdm_plots, ncol = 5, nrow = 3) +
   plot_annotation(
     title = expression(bold("Spearman correlation between chromatin accessibility modeled by GDM distribution (" * mu * " = 5000, size = 1.0)")),
@@ -144,9 +132,9 @@ combined_gdm <- wrap_plots(gdm_plots, ncol = 5, nrow = 3) +
     )
   )
 
-# Zapis do pliku o idealnych proporcjach 3x5 pod plakat (height przywrócone do 4.0)
+
 pdf(file.path(OUTPUT_BASE_DIR, "gdm_matrix_by_stability.pdf"), width = 10, height = 4.0)
 print(combined_gdm)
 dev.off()
 
-cat("Sukces! Wygenerowano plik 'gdm_matrix_by_stability.pdf'.\n")
+cat("Success.\n")

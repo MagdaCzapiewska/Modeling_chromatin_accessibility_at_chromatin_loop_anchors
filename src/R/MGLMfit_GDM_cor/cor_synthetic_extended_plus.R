@@ -14,10 +14,8 @@ fit_base_dir <- args[5]
 rho_str <- format(rho_val, nsmall = 1)
 source(file.path("src", "R", "MGLMfit_GDM_cor", "correlation_functions.R"))
 
-# Ścieżka do wyników dopasowań MGLM w nowym katalogu synthetic_data_extended_plus
 fit_dir <- file.path(fit_base_dir, "MGLMfit_GDM", "synthetic_data_extended_plus", paste0("rho_", rho_str), paste0("init_", init_val))
 
-# Nowa rozszerzona siatka parametrów
 N_CELLS        <- c("1000", "2000", "5000", "10000", "20000")
 MUS            <- c(1000, 2000, 3000, 4000, 5000)
 SIZE_NEGBINOMS <- c("0.1", "0.2", "0.5", "1.0", "2.0", "inf", "fixed")
@@ -58,7 +56,6 @@ for (n in N_CELLS) {
   }
 }
 
-# Tworzenie katalogu wyjściowego w razie jego braku
 out_dir <- dirname(output_file)
 if (!dir.exists(out_dir)) {
   dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)

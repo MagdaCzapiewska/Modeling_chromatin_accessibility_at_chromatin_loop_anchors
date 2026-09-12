@@ -23,7 +23,6 @@ rule all:
 rule plot_extended_gdm_distributions:
     input:
         script = PLOT_SCRIPT,
-        # Potok czeka na przeliczenie korelacji dla wszystkich 20 seedów
         cor_files = expand(os.path.join(IN_COR_DIR, "rho_{rho_str}", "init_{init}", "cor_seed{seed}.tsv.gz"), seed=SEEDS, allow_missing=True)
     output:
         pdf_n = os.path.join(OUT_PLOT_DIR, "rho_{rho_str}", "init_{init}", "variable_N.pdf"),

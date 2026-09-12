@@ -21,14 +21,12 @@ if (length(files) == 0) {
 }
 dt <- rbindlist(lapply(files, fread))
 
-# Pełne wektory extended
 N_CELLS <- c("500", "1000", "1500", "2000", "2500", "3000", "3500", "4000", "5000", "10000", "20000", "40000", "60000", "80000", "100000", "120000", "140000", "160000")
 MUS     <- c(1000, 2000, 3000, 4000, 5000, 6000)
 SIZES   <- c("0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7", "0.8", "0.9", "1.0", "1.5", "2.0", "2.5", "3.0", "3.5", "10.0", "inf", "fixed")
 
 dir.create(output_base_dir, recursive = TRUE, showWarnings = FALSE)
 
-# Ulepszony helper: czytelne czcionki, marginesy i standardowe wielkości
 plot_naive_pair <- function(sub_dt, title_txt) {
   n_datasets <- nrow(sub_dt[!is.na(spearman_rho)])
   
@@ -61,7 +59,6 @@ plot_naive_pair <- function(sub_dt, title_txt) {
   return(ps + pp)
 }
 
-# --- PDF 1: Zmienia się N (Rozbicie 18 obiektów na 3 strony po 6 obiektów) ---
 pdf(file.path(output_base_dir, "variable_N.pdf"), width = 20, height = 14)
 for (current_mu in MUS) {
   for (current_size in SIZES) {
@@ -71,7 +68,6 @@ for (current_mu in MUS) {
       plots[[as.character(current_n)]] <- plot_naive_pair(sub_dt, paste0("n=", current_n))
     }
     
-    # Podział 18 par na porcje po max 6 na stronę (układ 3 wiersze x 2 kolumny par)
     chunks <- split(plots, ceiling(seq_along(plots) / 6))
     for (page in seq_along(chunks)) {
       combined <- wrap_plots(chunks[[page]], ncol = 2, nrow = 3, byrow = TRUE) + 
@@ -85,7 +81,6 @@ for (current_mu in MUS) {
 }
 dev.off()
 
-# --- PDF 2: Zmienia się MU (6 obiektów = idealnie 1 strona w układzie 3x2) ---
 pdf(file.path(output_base_dir, "variable_MU.pdf"), width = 20, height = 14)
 for (current_n in N_CELLS) {
   for (current_size in SIZES) {
@@ -95,7 +90,6 @@ for (current_n in N_CELLS) {
       plots[[as.character(current_mu)]] <- plot_naive_pair(sub_dt, paste0("mu=", current_mu))
     }
     
-    # 6 obiektów mieści się idealnie na jednej stronie w siatce 3x2 par
     combined <- wrap_plots(plots, ncol = 2, nrow = 3, byrow = TRUE) + 
       plot_annotation(title = paste0("Naive Extended | Variable MU (n=", current_n, ", sizeNB=", current_size, ") | True rho = ", expected_rho))
     print(combined)
@@ -103,7 +97,6 @@ for (current_n in N_CELLS) {
 }
 dev.off()
 
-# --- PDF 3: Zmienia się SIZE_NEGBINOM (Rozbicie 18 obiektów na 3 strony po 6 obiektów) ---
 pdf(file.path(output_base_dir, "variable_SIZE.pdf"), width = 20, height = 14)
 for (current_n in N_CELLS) {
   for (current_mu in MUS) {
@@ -113,7 +106,6 @@ for (current_n in N_CELLS) {
       plots[[current_size]] <- plot_naive_pair(sub_dt, paste0("size=", current_size))
     }
     
-    # Podział 18 par na porcje po max 6 na stronę
     chunks <- split(plots, ceiling(seq_along(plots) / 6))
     for (page in seq_along(chunks)) {
       combined <- wrap_plots(chunks[[page]], ncol = 2, nrow = 3, byrow = TRUE) + 

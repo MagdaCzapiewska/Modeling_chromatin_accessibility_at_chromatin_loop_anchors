@@ -3,10 +3,9 @@
 library(data.table)
 library(yaml)
 
-# 1. Wczytanie konfiguracji i ścieżek
 config_path <- file.path("config", "config.yml")
 if (!file.exists(config_path)) {
-  stop("Błąd: Nie znaleziono pliku konfiguracji config/config.yml")
+  stop("File not found: config/config.yml")
 }
 
 config <- yaml::yaml.load_file(config_path)
@@ -17,24 +16,22 @@ loops_file <- file.path(datadir, "long_and_short_range_loops_D_mel.tsv")
 counts_dir <- file.path(resultsdir, "counts", "counts_in_anchors")
 
 if (!file.exists(loops_file)) {
-  stop("Błąd: Nie znaleziono pliku pętli: ", loops_file)
+  stop("File not found: ", loops_file)
 }
 
 if (!dir.exists(counts_dir)) {
-  stop("Błąd: Nie znaleziono katalogu z odczytami: ", counts_dir)
+  stop("Directory not found: ", counts_dir)
 }
 
-# 2. Pobranie listy pętli i okien czasowych
 loops_table <- fread(loops_file)
 if (!"loop_id" %in% names(loops_table)) {
-  stop("Błąd: Kolumna 'loop_id' nie istnieje w pliku pętli.")
+  stop("Column 'loop_id' not found.")
 }
 loop_ids <- loops_table$loop_id
 
 time_windows <- c("00-02", "02-04", "04-06", "06-08", "08-10", 
                   "10-12", "12-14", "14-16", "16-18", "18-20")
 
-# 3. Zmienne do akumulacji statystyk
 total_cells <- 0
 sum_total_reads <- 0
 sum_x_A1 <- 0
@@ -43,13 +40,11 @@ zeros_x_A1 <- 0
 zeros_x_A2 <- 0
 files_processed <- 0
 
-message("=== Rozpoczynanie przetwarzania plików ===")
 
-# 4. Pętla po oknach czasowych i pętlach
 for (tw in time_windows) {
   for (loop_id in loop_ids) {
     
-    # Sprawdzenie wersji skompresowanej i nieskompresowanej
+
     fpath <- file.path(counts_dir, paste0("reads_", tw, "_", loop_id, ".tsv.gz"))
     if (!file.exists(fpath)) {
       fpath <- file.path(counts_dir, paste0("reads_", tw, "_", loop_id, ".tsv"))
@@ -57,7 +52,6 @@ for (tw in time_windows) {
     
     if (!file.exists(fpath)) next
     
-    # Wczytujemy tylko potrzebne kolumny dla oszczędności pamięci i czasu
     dt <- fread(fpath, select = c("x_A1", "x_A2", "total_reads"))
     if (nrow(dt) == 0) next
     
@@ -75,9 +69,8 @@ for (tw in time_windows) {
   }
 }
 
-# 5. Obliczenie statystyk końcowych
 if (total_cells == 0) {
-  stop("Nie znaleziono żadnych danych do przeanalizowania.")
+  stop("No data found.")
 }
 
 mean_total_reads <- sum_total_reads / total_cells
@@ -89,15 +82,15 @@ pct_zeros_x_A2   <- (zeros_x_A2 / total_cells) * 100
 
 # 6. Wypisanie wyników na konsolę
 cat("\n==================================================\n")
-cat("          PODSUMOWANIE STATYSTYK ODCZYTÓW         \n")
+cat("                   SUMMARY                          \n")
 cat("==================================================\n")
-cat(sprintf("Przetworzonych plików:           %s\n", format(files_processed, big.mark = ",")))
-cat(sprintf("Łączna liczba obserwacji (N):    %s\n", format(total_cells, big.mark = ",")))
+cat(sprintf("Files:           %s\n", format(files_processed, big.mark = ",")))
+cat(sprintf("Observations (N):    %s\n", format(total_cells, big.mark = ",")))
 cat("--------------------------------------------------\n")
-cat(sprintf("Średnia total_reads:            %.2f\n", mean_total_reads))
-cat(sprintf("Średnia liczba odczytów x_A1:   %.2f\n", mean_x_A1))
-cat(sprintf("Średnia liczba odczytów x_A2:   %.2f\n", mean_x_A2))
+cat(sprintf("Mean total_reads:            %.2f\n", mean_total_reads))
+cat(sprintf("Mean reads x_A1:   %.2f\n", mean_x_A1))
+cat(sprintf("Mean reads x_A2:   %.2f\n", mean_x_A2))
 cat("--------------------------------------------------\n")
-cat(sprintf("Procent zer w x_A1:              %.2f%%\n", pct_zeros_x_A1))
-cat(sprintf("Procent zer w x_A2:              %.2f%%\n", pct_zeros_x_A2))
+cat(sprintf("Percentage of zeros in x_A1:              %.2f%%\n", pct_zeros_x_A1))
+cat(sprintf("Percentage of zeros in x_A2:              %.2f%%\n", pct_zeros_x_A2))
 cat("==================================================\n\n")

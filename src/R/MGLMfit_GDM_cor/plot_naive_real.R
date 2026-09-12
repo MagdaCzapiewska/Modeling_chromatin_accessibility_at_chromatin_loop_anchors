@@ -2,7 +2,6 @@ library(data.table)
 library(ggplot2)
 library(patchwork)
 
-# Dodajemy bibliotekę do obsługi YAML (wymagane przy czytaniu configu)
 if (!requireNamespace("yaml", quietly = TRUE)) install.packages("yaml") 
 
 args <- commandArgs(trailingOnly = TRUE)
@@ -10,13 +9,12 @@ if (length(args) < 3) {
   stop("Usage: Rscript plot_naive_real.R <mode> <input_dir> <output_pdf>")
 }
 
-mode_arg   <- args[1]  # "all" lub "pops"
+mode_arg   <- args[1]  # "all" or "pops"
 input_dir  <- args[2]  
 output_pdf <- args[3]  
 
 tw_list <- c("00-02", "02-04", "04-06", "06-08", "08-10", "10-12", "12-14", "14-16", "16-18", "18-20")
 
-# --- Dynamiczne ładowanie ścieżki kardynalności z config.yml ---
 config_path <- file.path("config", "config.yml")
 if (file.exists(config_path)) {
   config <- yaml::yaml.load_file(config_path)
@@ -64,7 +62,6 @@ plot_naive_pair <- function(dt, title_prefix = "", text_size_factor = 1, is_pop_
 
 if(!dir.exists(dirname(output_pdf))) dir.create(dirname(output_pdf), recursive = TRUE)
 
-# --- Przygotowanie danych kardynalności ---
 has_cardinality <- FALSE
 if (file.exists(cardinality_file)) {
   dt_cardinality <- fread(cardinality_file)
@@ -82,7 +79,7 @@ if (file.exists(cardinality_file)) {
     has_cardinality <- TRUE
   }
 } else {
-  warning(paste("Ostrzeżenie: Brak pliku kardynalności pod adresem:", cardinality_file))
+  warning(paste("Warning: no cardinality file:", cardinality_file))
 }
 
 all_data_list <- list()
@@ -96,7 +93,6 @@ for (tw in tw_list) {
   dt[, tw_window := tw]
   all_data_list[[tw]] <- dt
   
-  # Liczba komórek globalnie dla trybu 'all'
   global_cells <- NULL
   if (mode_arg == "all" && has_cardinality) {
     global_cells <- sum(dt_card_long[tw_window == tw, cells], na.rm = TRUE)
@@ -105,13 +101,11 @@ for (tw in tw_list) {
   if (mode_arg == "all") {
     print(plot_naive_pair(dt, paste("Naive Real TW:", tw), text_size_factor = 1.5, is_pop_mode = FALSE, total_cells = global_cells))
   } else {
-    # Tryb populacyjny
     if (!"population" %in% names(dt) || nrow(dt) == 0) next
     dt[, pop_id := as.integer(sub("^([0-9]+)_.*", "\\1", population))]
     
     pop_info <- unique(dt[!is.na(population), .(pop_id, population)])
     
-    # Podpinamy komórki (JOIN)
     if (has_cardinality) {
       pop_info <- merge(pop_info, 
                         dt_card_long[tw_window == tw, .(pop_id = cluster_id, cells)], 
@@ -134,7 +128,6 @@ for (tw in tw_list) {
       p_list[[i]] <- plot_naive_pair(sub_dt, title_prefix = pname, text_size_factor = 1.1, is_pop_mode = TRUE, total_cells = pcell)
     }
     
-    # Podział populacji na mniejsze porcje (maksymalnie 8 populacji na stronę)
     pops_per_page <- 8  
     plot_chunks <- split(p_list, ceiling(seq_along(p_list) / pops_per_page))
     

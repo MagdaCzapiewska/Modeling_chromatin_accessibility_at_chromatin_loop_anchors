@@ -2,9 +2,6 @@ library(data.table)
 library(ggplot2)
 library(patchwork)
 
-# ==============================================================================
-# CONFIGURATION
-# ==============================================================================
 INPUT_DIR        <- "./results/naive_correlation/synthetic_data_extended"
 OUTPUT_BASE_DIR <- "." 
 EXPECTED_RHO    <- 0.0
@@ -14,22 +11,17 @@ SELECTED_SEEDS  <- 0:999
 N_CELLS <- c(1000, 2000, 5000, 10000, 20000)
 SIZES   <- c("0.5", "1.0", "2.0", "inf", "fixed")
 
-# ==============================================================================
-# WCZYTYWANIE DANYCH
-# ==============================================================================
+
 rho_str <- format(EXPECTED_RHO, nsmall = 1)
 search_path <- file.path(INPUT_DIR, paste0("rho_", rho_str))
 files <- file.path(search_path, paste0("naive_cor_seed", SELECTED_SEEDS, ".tsv.gz"))
 existing_files <- files[file.exists(files)]
 
-if (length(existing_files) == 0) stop("Brak plików z danymi!")
+if (length(existing_files) == 0) stop("No files with data!")
 dt <- rbindlist(lapply(existing_files, fread))
 
 dir.create(OUTPUT_BASE_DIR, recursive = TRUE, showWarnings = FALSE)
 
-# ==============================================================================
-# MODYFIKOWANY MOTYW DLA MAŁEJ STRONY (Większy odstęp w poziomie)
-# ==============================================================================
 matrix_theme <- function(row_idx, col_idx, total_rows, total_cols) {
   theme_minimal(base_size = 11) + 
     theme(
@@ -44,10 +36,7 @@ matrix_theme <- function(row_idx, col_idx, total_rows, total_cols) {
     )
 }
 
-# ==============================================================================
-# PDF 1: PEARSON
-# ==============================================================================
-cat("Generuję PDF dla korelacji Pearsona (Kompaktowy format)... \n")
+cat("Generating PDF for Pearson... \n")
 pearson_plots <- list()
 
 for (r in seq_along(SIZES)) {
@@ -68,7 +57,6 @@ for (r in seq_along(SIZES)) {
       matrix_theme(r, c, length(SIZES), length(N_CELLS))
     
     if (c == 1) {
-      # --- ZMIANA: Zostawione samo "fixed" bez dodatkowego tekstu ---
       row_label <- ifelse(current_size == "fixed", "fixed", paste0("s = ", current_size))
       p <- p + labs(y = row_label) + 
         theme(axis.title.y = element_text(size = 10, face = "bold", color = "#2c3e50", angle = 90, vjust = 0.5))
@@ -92,11 +80,7 @@ pdf(file.path(OUTPUT_BASE_DIR, "naive_matrix_pearson.pdf"), width = 10, height =
 print(combined_pearson)
 dev.off()
 
-
-# ==============================================================================
-# PDF 2: SPEARMAN
-# ==============================================================================
-cat("Generuję PDF dla korelacji Spearmana (Kompaktowy format)... \n")
+cat("Generating PDF for Spearman... \n")
 spearman_plots <- list()
 
 for (r in seq_along(SIZES)) {
@@ -117,7 +101,6 @@ for (r in seq_along(SIZES)) {
       matrix_theme(r, c, length(SIZES), length(N_CELLS))
     
     if (c == 1) {
-      # --- ZMIANA: Zostawione samo "fixed" bez dodatkowego tekstu ---
       row_label <- ifelse(current_size == "fixed", "fixed", paste0("s = ", current_size))
       p <- p + labs(y = row_label) + 
         theme(axis.title.y = element_text(size = 10, face = "bold", color = "#2c3e50", angle = 90, vjust = 0.5))
@@ -141,4 +124,4 @@ pdf(file.path(OUTPUT_BASE_DIR, "naive_matrix_spearman.pdf"), width = 10, height 
 print(combined_spearman)
 dev.off()
 
-cat("Sukces! Wygenerowano pliki PDF z minimalistyczną etykietą 'fixed'.\n")
+cat("Success.\n")

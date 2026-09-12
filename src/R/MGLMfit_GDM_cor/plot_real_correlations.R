@@ -7,12 +7,10 @@ if (length(args) < 4) {
   stop("Usage: Rscript plot_real_correlations.R <mode> <init> <input_dir> <output_pdf> [<cardinality_file>]")
 }
 
-mode_arg   <- args[1]  # "all" lub "pops"
-init_val   <- args[2]  # "default" lub "1e-6"
-input_dir  <- args[3]  # katalog gdzie leżą pliki cor_{tw}.tsv.gz
-output_pdf <- args[4]  # ścieżka do wynikowego pliku PDF
-
-# Pobieramy ścieżkę kardynalności z 5. argumentu lub szukamy domyślnej
+mode_arg   <- args[1]  # "all" or "pops"
+init_val   <- args[2]  # "default" or "1e-6"
+input_dir  <- args[3]  # directory with cor_{tw}.tsv.gz
+output_pdf <- args[4]  # output PDF
 
 config_path <- file.path("config", "config.yml")
 
@@ -23,7 +21,6 @@ if (length(args) >= 5) {
   resultsdir <- config$paths$resultsdir
   cardinality_file <- file.path(resultsdir, "cluster_cardinality.tsv.gz")
 } else {
-  # Awaryjny fallback, gdyby skrypt był odpalany całkiem poza Snakemake
   cardinality_file <- "results/cluster_cardinality.tsv.gz"
 }
 
@@ -97,16 +94,13 @@ plot_type_2 <- function(dt, title_prefix = "", total_cells = NULL) {
   return(p)
 }
 
-# --- Główny Nurt Wykonawczy ---
 
 if(!dir.exists(dirname(output_pdf))) dir.create(dirname(output_pdf), recursive = TRUE)
 
-# Wczytanie pliku kardynalności z miękkim lądowaniem (w razie braku pliku)
 has_cardinality <- FALSE
 if (file.exists(cardinality_file)) {
   dt_cardinality <- fread(cardinality_file)
   
-  # Szukamy kolumny identyfikatora klastra (niezależnie od dokładnej pisowni)
   cluster_col <- grep("cluster", names(dt_cardinality), value = TRUE, ignore.case = TRUE)[1]
   
   if (length(cluster_col) > 0 && cluster_col %in% names(dt_cardinality)) {
@@ -122,7 +116,7 @@ if (file.exists(cardinality_file)) {
     has_cardinality <- TRUE
   }
 } else {
-  warning(paste("Ostrzeżenie: Nie odnaleziono pliku liczności pod adresem:", cardinality_file, "- rysowanie bez liczby komórek."))
+  warning(paste("Warning. File with cardinality not found:", cardinality_file, "- plotting without number of cells."))
 }
 
 all_data_list <- list()
@@ -137,7 +131,6 @@ for (tw in tw_list) {
   dt[, tw_window := tw]
   all_data_list[[tw]] <- dt
   
-  # Pobranie liczby komórek w zależności od trybu i dostępności pliku
   global_cells <- NULL
   if (mode_arg == "all" && has_cardinality) {
     global_cells <- sum(dt_card_long[tw_window == tw, cells], na.rm = TRUE)
@@ -149,7 +142,6 @@ for (tw in tw_list) {
     print(p1 + p2)
     
   } else {
-    # --- Tryb populacyjny ---
     pop_info <- unique(dt[!is.na(population), .(pop_id, pop_name)])
     
     if (has_cardinality) {

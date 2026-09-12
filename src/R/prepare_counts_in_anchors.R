@@ -103,7 +103,7 @@ barcodes <- readLines(gzfile(columns_file))
 peaks <- readLines(gzfile(rows_file))
 mat <- readMM(gzfile(matrix_file))
 
-# Konwersja dgTMatrix na dgCMatrix dla bezpiecznego indeksowania i colSums (i dla szybkości)
+# Conversion from dgTMatrix to dgCMatrix for safe indexing and quick colSums
 mat <- as(mat, "CsparseMatrix")
 
 stopifnot(setequal(barcodes, total_reads_df$barcode))

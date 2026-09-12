@@ -9,12 +9,9 @@ library(gridExtra)
 library(grid)
 library(stringr)
 
-# ==============================================================================
-# 1. Konfiguracja i obsługa argumentów wiersza poleceń
-# ==============================================================================
 args <- commandArgs(trailingOnly = TRUE)
 if (length(args) < 1) {
-  stop("Użycie: Rscript plot_loop_time_analysis.R <loop_id> [output_pdf]")
+  stop("Usage: Rscript plot_loop_time_analysis.R <loop_id> [output_pdf]")
 }
 
 loop_id_arg <- args[1]
@@ -24,7 +21,7 @@ if (!file.exists(config_path)) {
   if (file.exists("config.yml")) {
     config_path <- "config.yml"
   } else {
-    stop("Nie znaleziono pliku konfiguracyjnego config.yml ani w folderze config/, ani w bieżącym katalogu.")
+    stop("config file not found.")
   }
 }
 config <- yaml::yaml.load_file(config_path)
@@ -32,7 +29,6 @@ config <- yaml::yaml.load_file(config_path)
 resultsdir <- config$paths$resultsdir
 srcdir     <- config$paths$srcdir
 
-# Dedykowany katalog wyjściowy dla trójkątów w czasie
 out_dir <- file.path(resultsdir, "triangle_plots", "time")
 dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
 
@@ -43,21 +39,15 @@ output_pdf <- if (length(args) >= 2 && nzchar(args[2])) {
 }
 
 message("==================================================")
-message(sprintf("Generowanie raportu z wyników eval dla pętli ID: %s", loop_id_arg))
-message(sprintf("Plik docelowy: %s", output_pdf))
+message(sprintf("Report for loop ID: %s", loop_id_arg))
+message(sprintf("Output file: %s", output_pdf))
 message("==================================================")
 
 time_windows <- c("00-02", "02-04", "04-06", "06-08", "08-10", "10-12", "12-14", "14-16", "16-18", "18-20")
 n_sim <- 50000
 
-# Katalog zawierający pliki ewaluacyjne eval_cor_{tw}.tsv.gz
 eval_dir <- file.path(resultsdir, "MGLMreg", "eval_0h+_time_default")
 
-# ==============================================================================
-# 2. Pomocnicze funkcje statystyczne i matematyczne
-# ==============================================================================
-
-# Symulacja Monte Carlo dla kaskadowego modelu GDM3
 rGDM3_params <- function(n, sorted_names, alpha_vec, beta_vec) {
   if (is.null(alpha_vec) || is.null(beta_vec) || any(is.na(alpha_vec)) || any(is.na(beta_vec)) || any(alpha_vec <= 0) || any(beta_vec <= 0)) {
     return(NULL)
@@ -71,7 +61,6 @@ rGDM3_params <- function(n, sorted_names, alpha_vec, beta_vec) {
   return(res)
 }
 
-# Analityczna gęstość GDM3 w oryginalnej przestrzeni
 dgdm3 <- function(x1, x2, x3, alpha, beta) {
   eps <- 1e-12
   x1 <- pmax(x1, eps)
@@ -91,7 +80,7 @@ dgdm3 <- function(x1, x2, x3, alpha, beta) {
   exp(log_pdf)
 }
 
-# Ekstrakcja parametrów kaskady GDM z wiersza tabeli eval
+
 extract_gdm_params_from_row <- function(row, prefix = "fit_") {
   alpha_out <- as.numeric(row[[paste0(prefix, "alpha_x_out_est")]])
   beta_out  <- as.numeric(row[[paste0(prefix, "beta_x_out_est")]])
@@ -129,9 +118,6 @@ extract_gdm_params_from_row <- function(row, prefix = "fit_") {
   )
 }
 
-# ==============================================================================
-# 3. Odczyt danych z wyników EVAL i przygotowanie prób okien czasowych
-# ==============================================================================
 
 time_summary_list <- list()
 window_plots_data <- list()
@@ -143,7 +129,7 @@ for (tw in time_windows) {
   eval_file <- file.path(eval_dir, paste0("eval_cor_", tw, ".tsv.gz"))
   
   if (!file.exists(eval_file)) {
-    message(sprintf("Ostrzeżenie: Brak pliku eval dla okna %s (%s)", tw, eval_file))
+    message(sprintf("Warning! No eval file for time window %s (%s)", tw, eval_file))
     next
   }
   
@@ -151,11 +137,10 @@ for (tw in time_windows) {
   row_eval <- dt_eval[loop_id == loop_id_arg]
   
   if (nrow(row_eval) == 0) {
-    message(sprintf("Ostrzeżenie: Brak danych dla loop_id '%s' w oknie %s", loop_id_arg, tw))
+    message(sprintf("Warning! No data for loop '%s' in time window %s", loop_id_arg, tw))
     next
   }
   
-  # --- 1. MGLMfit z danych eval ---
   fit_info <- extract_gdm_params_from_row(row_eval, prefix = "fit_")
   fit_dt   <- NULL
   fit_rho  <- as.numeric(row_eval$fit_spearman_rho)
@@ -177,7 +162,6 @@ for (tw in time_windows) {
     }
   }
   
-  # --- 2. MGLMreg z danych eval ---
   reg_info <- extract_gdm_params_from_row(row_eval, prefix = "reg_")
   reg_dt   <- NULL
   reg_rho  <- as.numeric(row_eval$reg_spearman_rho)
@@ -198,8 +182,7 @@ for (tw in time_windows) {
       reg_means <- c(p_A1 = mean(reg_dt$x_A1), p_A2 = mean(reg_dt$x_A2), p_out = mean(reg_dt$x_out))
     }
   }
-  
-  # Jeśli w pliku eval zapisano reg_pred_p_*, używamy preferowanych wartości z predict()
+
   pred_p_a1  <- as.numeric(row_eval$reg_pred_p_x_A1)
   pred_p_a2  <- as.numeric(row_eval$reg_pred_p_x_A2)
   pred_p_out <- as.numeric(row_eval$reg_pred_p_x_out)
@@ -208,7 +191,7 @@ for (tw in time_windows) {
     reg_means <- c(p_A1 = pred_p_a1, p_A2 = pred_p_a2, p_out = pred_p_out)
   }
 
-  # Wspólny próg przycinania (threshold) dla zachowania spójności skali w oknie
+
   m_out_fit <- if (!is.null(fit_dt)) mean(fit_dt$x_out) else NA_real_
   m_out_reg <- if (!is.null(reg_dt)) mean(reg_dt$x_out) else NA_real_
   m_out_val <- max(c(m_out_fit, m_out_reg), na.rm = TRUE)
@@ -240,12 +223,9 @@ for (tw in time_windows) {
 summary_dt <- rbindlist(time_summary_list)
 
 if (nrow(summary_dt) == 0) {
-  stop(sprintf("Brak danych ewaluacyjnych dla pętli ID: %s we wszystkich oknach czasowych.", loop_id_arg))
+  stop(sprintf("No eval data for loop ID: %s in all time windows.", loop_id_arg))
 }
 
-# ==============================================================================
-# 4. STRONA 1: Zmiana prawdopodobieństw p_A1, p_A2, p_out oraz korelacji w czasie
-# ==============================================================================
 
 plot_trajectory <- function(dt, val_fit_col, val_reg_col, title_text, y_label) {
   dt_long <- melt(dt, id.vars = c("time_window", "mid_time"),
@@ -279,16 +259,13 @@ page1_grid <- (p_traj_A1 | p_traj_A2) / (p_traj_out | p_traj_rho) +
     theme = theme(plot.title = element_text(size = 16, face = "bold"))
   )
 
-# ==============================================================================
-# 5. STRONY 2+: Histogramy MGLMfit vs MGLMreg na trójkątach (ggtern)
-# ==============================================================================
 
 make_ternary_histogram <- function(dt, sorted_names, rho_val, threshold, model_label, tw_name) {
   if (is.null(dt) || nrow(dt) == 0) {
     df_empty <- data.frame(x = 1/3, y = 1/3, z = 1/3)
     p <- ggtern(df_empty, aes(x = x, y = y, z = z)) +
-      labs(title = paste0(tw_name, " | ", model_label), subtitle = "Brak danych modelu") +
-      annotate("text", x = 1/3, y = 1/3, label = "BRAK DANYCH", color = "red", size = 5) +
+      labs(title = paste0(tw_name, " | ", model_label), subtitle = "No model data") +
+      annotate("text", x = 1/3, y = 1/3, label = "NO DATA", color = "red", size = 5) +
       theme_bw() + theme_latex()
     return(p)
   }
@@ -336,16 +313,13 @@ make_ternary_histogram <- function(dt, sorted_names, rho_val, threshold, model_l
   return(p)
 }
 
-# ==============================================================================
-# 6. STRONY N+: Analityczne gęstości GDM3 na trójkątach (ggtern)
-# ==============================================================================
 
 make_ternary_density <- function(sorted_names, alpha_vec, beta_vec, rho_val, threshold, model_label, tw_name) {
   if (is.null(alpha_vec) || is.null(beta_vec) || any(is.na(alpha_vec)) || any(is.na(beta_vec))) {
     df_empty <- data.frame(x = 1/3, y = 1/3, z = 1/3)
     p <- ggtern(df_empty, aes(x = x, y = y, z = z)) +
-      labs(title = paste0(tw_name, " | ", model_label), subtitle = "Brak danych gęstości") +
-      annotate("text", x = 1/3, y = 1/3, label = "BRAK DANYCH", color = "red", size = 5) +
+      labs(title = paste0(tw_name, " | ", model_label), subtitle = "No density data") +
+      annotate("text", x = 1/3, y = 1/3, label = "NO DATA", color = "red", size = 5) +
       theme_bw() + theme_latex()
     return(p)
   }
@@ -356,7 +330,6 @@ make_ternary_density <- function(sorted_names, alpha_vec, beta_vec, rho_val, thr
   grid_dt[, x_A2 := 1 - x_A1 - x_out]
   grid_dt <- grid_dt[x_A2 > 0]
 
-  # Odwrotne przekształcenie do oryginalnych współrzędnych
   grid_dt[, x_out_orig := x_out * (1 - threshold) + threshold]
   grid_dt[, x_A1_orig  := x_A1 * (1 - threshold)]
   grid_dt[, x_A2_orig  := x_A2 * (1 - threshold)]
@@ -406,16 +379,12 @@ make_ternary_density <- function(sorted_names, alpha_vec, beta_vec, rho_val, thr
   return(p)
 }
 
-# ==============================================================================
-# 7. GENEROWANIE RAPORTU PDF
-# ==============================================================================
+
 
 pdf(output_pdf, width = 14, height = 10)
 
-# Strona 1: Trajektorie czasowe prawdopodobieństw i korelacji
 print(page1_grid)
 
-# Strony 2+: Histogramy na trójkątach (po 2 okna na stronę = 4 trójkąty)
 for (page_i in seq(1, length(time_windows), by = 2)) {
   tws_sub <- time_windows[page_i:min(page_i + 1, length(time_windows))]
   
@@ -449,7 +418,6 @@ for (page_i in seq(1, length(time_windows), by = 2)) {
   }
 }
 
-# Strony N+: Analityczne gęstości na trójkątach (po 2 okna na stronę = 4 trójkąty)
 for (page_i in seq(1, length(time_windows), by = 2)) {
   tws_sub <- time_windows[page_i:min(page_i + 1, length(time_windows))]
   
@@ -484,5 +452,3 @@ for (page_i in seq(1, length(time_windows), by = 2)) {
 }
 
 dev.off()
-
-cat("\n[Sukces] Wygenerowano raport PDF na podstawie wyników eval:\n", output_pdf, "\n")

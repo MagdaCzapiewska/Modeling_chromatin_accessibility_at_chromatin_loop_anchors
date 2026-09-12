@@ -38,7 +38,6 @@ SIZES <- c("0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7", "0.8", "0.9", "1.0",
 
 dir.create(output_base_dir, recursive = TRUE, showWarnings = FALSE)
 
-# Helper do rysowania histogramu GDM
 plot_hist_gdm <- function(sub_dt, title_txt) {
   n_datasets <- nrow(sub_dt[!is.na(spearman_rho)])
   ggplot(sub_dt, aes(x = spearman_rho, fill = color_group)) +
@@ -50,7 +49,7 @@ plot_hist_gdm <- function(sub_dt, title_txt) {
     theme_minimal() + theme(plot.title = element_text(size = 7, face = "bold"), plot.subtitle = element_text(size = 6), axis.title = element_text(size = 6), legend.position = "none")
 }
 
-# --- PDF 1: Zmienia się N (Strony dla kombinacji MU x SIZE) ---
+
 pdf(file.path(output_base_dir, "variable_N.pdf"), width = 20, height = 12)
 for (current_mu in MUS) {
   for (current_size in SIZES) {
@@ -66,7 +65,7 @@ for (current_mu in MUS) {
 }
 dev.off()
 
-# --- PDF 2: Zmienia się MU (Strony dla kombinacji N x SIZE) ---
+
 pdf(file.path(output_base_dir, "variable_MU.pdf"), width = 16, height = 10)
 for (current_n in N_CELLS) {
   for (current_size in SIZES) {
@@ -82,7 +81,7 @@ for (current_n in N_CELLS) {
 }
 dev.off()
 
-# --- PDF 3: Zmienia się SIZE_NEGBINOM (Strony dla kombinacji N x MU) ---
+
 pdf(file.path(output_base_dir, "variable_SIZE.pdf"), width = 20, height = 12)
 for (current_n in N_CELLS) {
   for (current_mu in MUS) {

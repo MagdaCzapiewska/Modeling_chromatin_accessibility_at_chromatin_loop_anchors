@@ -57,7 +57,6 @@ if (!dir.exists(output_dir)) {
 
 set.seed(42 + seed_val)
 
-# Lista do gromadzenia wyników z poszczególnych iteracji
 results_list <- list()
 
 for (n in n_cells_list) {
@@ -117,7 +116,6 @@ for (n in n_cells_list) {
   }
 }
 
-# Połączenie wszystkich ramek danych w jedną i zapis
 final_dt <- rbindlist(results_list, use.names = TRUE, fill = TRUE)
 output_file <- file.path(output_dir, paste0("synthetic_counts_seed", seed_val, ".tsv.gz"))
 

@@ -156,18 +156,15 @@ for (i in seq_along(pops)) {
 # SAVE OUTPUTS (SPLIT INTO TSV.GZ AND RDS)
 ############################################################################
 
-# Przygotowanie i posortowanie tabeli zbiorczej
 final_priors <- bind_rows(priors_list) %>%
   mutate(cluster_id = ifelse(population == "all", -1, suppressWarnings(as.integer(sub("_.*", "", population))))) %>%
   mutate(cluster_id = ifelse(is.na(cluster_id), 999, cluster_id)) %>% 
   arrange(cluster_id) %>%
   select(-cluster_id)
 
-# 1. Zapis tabeli statystyk do skompresowanego TSV
 output_tsv_path <- file.path(output_dir, paste0("negbinom_parameters_", tw, "_all_and_by_population.tsv.gz"))
 fwrite(final_priors, output_tsv_path, sep = "\t")
 
-# 2. Zapis samych surowych obiektów modeli MASS do pliku RDS
 output_rds_path <- file.path(output_dir, paste0("negbinom_models_", tw, "_all_and_by_population.rds"))
 saveRDS(models_list, output_rds_path)
 

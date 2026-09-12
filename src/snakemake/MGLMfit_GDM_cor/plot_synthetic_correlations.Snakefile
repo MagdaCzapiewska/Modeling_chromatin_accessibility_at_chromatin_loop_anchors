@@ -4,7 +4,6 @@ configfile: "config/config.yml"
 
 RESULTSDIR = config["paths"]["resultsdir"]
 
-# Katalog bazowy dla korelacji syntetycznych (zgodnie z Twoim cor_synthetic.Snakefile)
 OUT_BASE_DIR = os.path.join(RESULTSDIR, "MGLMfit_GDM_cor", "synthetic_data")
 PLOT_SCRIPT = os.path.join(config['paths']['Rsrcdir'], "MGLMfit_GDM_cor", "plot_synthetic_correlations.R")
 
@@ -29,7 +28,6 @@ rule plot_synthetic_distribution:
         os.path.join(OUT_BASE_DIR, "logs", "plotting_rho_{rho_str}_init_{init}.log")
     shell:
         """
-        # Przekazujemy ścieżkę do pliku, wartość rho (wyciągniętą z dzikiej karty) oraz plik wyjściowy
         Rscript {input.script} \
             "{input.tsv}" \
             "{wildcards.rho_str}" \

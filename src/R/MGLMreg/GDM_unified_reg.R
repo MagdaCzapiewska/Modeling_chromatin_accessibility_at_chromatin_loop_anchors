@@ -149,12 +149,10 @@ if (init_type == "smart") {
 Y_temp <- as.matrix(df[, .(x_out, x_A2, x_A1)])
   X_temp <- model.matrix(rhs_formula, data = df)
   n_pred <- ncol(X_temp)
-  n_cat  <- ncol(Y_temp)  # liczba kategorii w Y (x_out, x_A2, x_A1)
+  n_cat  <- ncol(Y_temp)
 
-  # Macierz zer o wymiarach (liczba predyktorów) x 4
   init_values <- matrix(0, nrow = n_pred, ncol = 2 * (n_cat - 1))
 
-  # Wartości startowe dla Interceptu (wiersz 1): c(alpha_1, alpha_2, beta_1, beta_2)
   init_values[1, ] <- c(9, 0.5, -0.5, -0.5)
 } else if (init_type == "default") {
   init_values <- NULL

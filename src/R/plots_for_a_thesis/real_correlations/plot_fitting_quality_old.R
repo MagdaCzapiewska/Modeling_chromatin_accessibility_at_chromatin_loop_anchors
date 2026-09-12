@@ -70,7 +70,7 @@ categorize_quality <- function(dt) {
   return(dt)
 }
 
-# Unified custom theme (bez legendy)
+# Unified custom theme
 custom_theme <- theme_minimal(base_size = 12) +
   theme(
     plot.title         = element_text(size = 13, face = "bold", hjust = 0.5, color = "black", margin = margin(b = 6)),

@@ -7,18 +7,16 @@ if (length(args) < 4) {
   stop("Usage: Rscript plot_activity_correlations.R <mode> <init> <input_dir> <output_pdf>")
 }
 
-mode_arg   <- args[1]  # "all" lub "pops"
-init_val   <- args[2]  # "default" lub "1e-6"
-input_dir  <- args[3]  # katalog gdzie leżą pliki cor_{tw}.tsv.gz
-output_pdf <- args[4]  # ścieżka do wynikowego pliku PDF
+mode_arg   <- args[1]  # "all" or "pops"
+init_val   <- args[2]  # "default" or "1e-6"
+input_dir  <- args[3]  # directory with files cor_{tw}.tsv.gz
+output_pdf <- args[4]  # output PDF path
 
 config <- yaml::yaml.load_file(file.path("config", "config.yml"))
 datadir <- config$paths$datadir
 
-# Ograniczamy listę okien czasowych zgodnie z Twoją logiką biznesową
 tw_list <- c("06-08", "10-12", "14-16")
 
-# Dynamiczna ścieżka do bazy danych o pętlach chromosomalnych
 loops_file <- file.path(datadir, "long_and_short_range_loops_D_mel.tsv")
 loops_data <- fread(loops_file)
 
@@ -89,7 +87,6 @@ plot_type_2 <- function(dt, title_prefix = "", fill_color = "#99FF99") {
   return(p)
 }
 
-# --- Główny Nurt Wykonawczy ---
 
 if(!dir.exists(dirname(output_pdf))) dir.create(dirname(output_pdf), recursive = TRUE)
 
@@ -109,7 +106,6 @@ for (tw in tw_list) {
   dt <- fread(path)
   dt <- process_data(dt)
   
-  # Integracja i transformacja etykiet okien czasowych do formatu bazy danych pętli
   tw_label <- paste0(as.numeric(substr(tw, 1, 2)), "-", as.numeric(substr(tw, 4, 5)), "h")
   col_nb   <- paste0("Dmel_", tw_label, "_Neuroblasts")
   col_neur <- paste0("Dmel_", tw_label, "_Neurons")
@@ -131,7 +127,6 @@ for (tw in tw_list) {
     dt_inactive <- dt[get(cat_col) == 0]
     
     if (mode_arg == "all") {
-      # --- Opcja GLOBALNA ---
       p1_act <- plot_type_1(dt_active, paste(cat_name, "Active"))
       p1_inact <- plot_type_1(dt_inactive, paste(cat_name, "Inactive"))
       print(p1_act + p1_inact + plot_annotation(title = paste("TW:", tw, "| Cat:", cat_name, "- Histograms")))
@@ -149,7 +144,6 @@ for (tw in tw_list) {
               plot_annotation(title = paste("TW:", tw, "| Cat:", cat_name, "- Density Plots")))
       
     } else {
-      # --- Opcja POPULACYJNA ---
       pop_info <- unique(dt[!is.na(population), .(pop_id, pop_name)])
       setorder(pop_info, pop_id)
       
@@ -163,7 +157,6 @@ for (tw in tw_list) {
         sub_act <- dt[pop_id == pid & get(cat_col) == 1]
         sub_inact <- dt[pop_id == pid & get(cat_col) == 0]
         
-        # Generowanie komponentów siatek
         hist_list[[length(hist_list) + 1]] <- plot_type_1(sub_act, paste(pname, "(Act)")) + theme(legend.position = "none")
         hist_list[[length(hist_list) + 1]] <- plot_type_1(sub_inact, paste(pname, "(Inact)")) + theme(legend.position = "none")
         
@@ -179,14 +172,12 @@ for (tw in tw_list) {
         dens_list[[length(dens_list) + 1]] <- p_pop_overlay
       }
       
-      # Pakowanie: 2 wiersze po 4 kolumny = 8 wykresów na stronę PDF
       hist_pages <- split(hist_list, ceiling(seq_along(hist_list) / 8))
       for(page in hist_pages) {
         print(wrap_plots(page, ncol = 4, nrow = 2) + 
                 plot_annotation(title = paste("TW:", tw, "| Cat:", cat_name, "- Histograms")))
       }
       
-      # Pakowanie: 2 wiersze po 3 kolumny (6 wykresów), co daje idealne 2 klastry (Act/Inact/Comp) na wiersz
       dens_pages <- split(dens_list, ceiling(seq_along(dens_list) / 6))
       for(page in dens_pages) {
         print(wrap_plots(page, ncol = 3, nrow = 2) + 
